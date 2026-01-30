@@ -16,145 +16,157 @@
 package com.example.marsphotos.data
 
 import android.util.Log
-import com.example.marsphotos.model.AccesoLoginResponse
-import com.example.marsphotos.model.BodyAccesoResponse
-import com.example.marsphotos.model.EnvelopeSobreAcceso
 import com.example.marsphotos.model.ProfileStudent
 import com.example.marsphotos.model.Usuario
 import com.example.marsphotos.network.SICENETWService
 import com.example.marsphotos.network.bodyacceso
-import com.example.marsphotos.network.bodyperfil
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.simpleframework.xml.core.Persister
+import java.io.BufferedReader
 import java.io.IOException
+import java.io.InputStreamReader
+import java.io.OutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 /**
- * Interface para acceder a los servicios SICENET
+ * Repository that fetch mars photos list from marsApi.
  */
 interface SNRepository {
-    /** Autenticación en SICENET */
-    suspend fun acceso(matricula: String, contrasenia: String): Boolean
-    
-    /** Obtiene el objeto Usuario autenticado */
-    suspend fun accesoObjeto(matricula: String, contrasenia: String): Usuario
-    
-    /** Obtiene el perfil académico del estudiante */
-    suspend fun profile(matricula: String): ProfileStudent
-    
-    /** Obtiene la matrícula del usuario autenticado */
-    suspend fun getMatricula(): String
+    /** Fetches list of MarsPhoto from marsApi */
+    suspend fun acceso(m: String, p: String): String
+    suspend fun accesoObjeto(m: String, p: String): Usuario
+    suspend fun profile(m: String, p: String): ProfileStudent
+
+
 }
 
-/**
- * Implementación local usando base de datos
- */
-class DBLocalSNRepository(val apiDB: Any) : SNRepository {
-    override suspend fun acceso(matricula: String, contrasenia: String): String {
+
+class DBLocalSNRepository(val apiDB : Any):SNRepository {
+    override suspend fun acceso(m: String, p: String): String {
+        //TODO("Not yet implemented")
+        //Reviso en base de datos
+        //Preparar Room
+
+        //apiDB.acceso( Usuario(matricula = m) )
+
         return ""
+
     }
 
-    override suspend fun accesoObjeto(matricula: String, contrasenia: String): Usuario {
+    override suspend fun accesoObjeto(m: String, p: String): Usuario {
+
+        //Tengo  que ir a Room
         return Usuario(matricula = "")
     }
 
-    override suspend fun profile(matricula: String): ProfileStudent {
-        return ProfileStudent()
-    }
-
-    override suspend fun getMatricula(): String {
-        return ""
+    override suspend fun profile(m: String, p: String): ProfileStudent {
+        //TODO("Not yet implemented")
+        return ProfileStudent("S")
     }
 }
 
 /**
- * Implementación de red que conecta con el servicio SICENET SOAP
+ * Network Implementation of Repository that fetch mars photos list from marsApi.
  */
 class NetworSNRepository(
     private val snApiService: SICENETWService
 ) : SNRepository {
-    
-    private var userMatricula: String = ""
+    /** Fetches list of MarsPhoto from marsApi*/
+    override suspend fun acceso(m: String, p: String): String {
 
-    /**
-     * Realiza la autenticación en SICENET
-     */
-    override suspend fun acceso(matricula: String, contrasenia: String): Boolean {
-        return try {
-            val soapBody = bodyacceso.format(matricula, contrasenia)
-            val response = snApiService.acceso(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
-            
-            val xmlString = response.string()
-            Log.d("SNRepository", "Respuesta SOAP: $xmlString")
-            
-            // Parsear la respuesta XML
-            val persister = Persister()
-            val envelope = persister.read(EnvelopeSobreAcceso::class.java, xmlString)
-            
-            val result = envelope.body?.accesoLoginResponse?.accesoLoginResult
-            Log.d("SNRepository", "Resultado: $result")
-            
-            // Guardar la matrícula si la autenticación fue exitosa
-            if (result?.lowercase()?.contains("true") == true || result?.lowercase()?.contains("ok") == true) {
-                userMatricula = matricula
-                true
+        //callHTTPS()
+        val res = snApiService.acceso(bodyacceso.format(m,p).toRequestBody() )
+
+        Log.d("RXML", res.string() )
+       /* Log.d("RXML", res.body?.accesoLoginResponse?.accesoLoginResult.toString() )
+
+        return res.body?.accesoLoginResponse?.accesoLoginResult.toString()*/
+        /*Log.d("RXML", res.message() )
+        return res.message()*/
+        return ""
+    }
+
+    override suspend fun accesoObjeto(m: String, p: String): Usuario {
+        //TODO("Not yet implemented")
+        return Usuario(matricula = "")
+
+
+    }
+
+    override suspend fun profile(m: String, p: String): ProfileStudent {
+        TODO("Not yet implemented")
+
+    }
+
+    suspend fun callHTTPS(){
+        // Datos para la petición
+        val matricula = "s20120999"
+        val contrasenia = "MIPASS"
+        val tipoUsuario = "ALUMNO" // o "DOCENTE", según corresponda
+
+        // URL del servicio web SOAP
+        val urlString = "https://sicenet.surguanajuato.tecnm.mx/ws/wsalumnos.asmx"
+
+        // Cuerpo del mensaje SOAP
+        val soapEnvelope = """
+        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <accesoLogin xmlns="http://tempuri.org/">
+              <strMatricula>$matricula</strMatricula>
+              <strContrasenia>$contrasenia</strContrasenia>
+              <tipoUsuario>$tipoUsuario</tipoUsuario>
+            </accesoLogin>
+          </soap:Body>
+        </soap:Envelope>
+    """.trimIndent()
+
+        try {
+            // Establecer la conexión HTTPS
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpsURLConnection
+
+            // Configurar la conexión
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.setRequestProperty("Host", "sicenet.surguanajuato.tecnm.mx")
+            connection.setRequestProperty("Content-Type", "text/xml; charset=\"UTF-8\"")
+            //connection.setRequestProperty("Sec-Fetch-Mode", "cors")
+            connection.setRequestProperty("Cookie", ".ASPXANONYMOUS=MaWJCZ-X2gEkAAAAODU2ZjkyM2EtNWE3ZC00NTdlLWFhYTAtYjk5ZTE5MDlkODIzeI1pCwvskL6aqtre4eT8Atfq2Po1;")
+            connection.setRequestProperty("Content-Length", soapEnvelope.length.toString())
+            connection.setRequestProperty("SOAPAction", "\"http://tempuri.org/accesoLogin\"")
+
+            // Enviar el cuerpo del mensaje SOAP
+            val outputStream: OutputStream = connection.outputStream
+            outputStream.write(soapEnvelope.toByteArray(Charsets.UTF_8))
+            outputStream.close()
+
+            // Leer la respuesta del servicio
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val cookies = connection.getHeaderField("Set-Cookie")
+                val reader = BufferedReader(InputStreamReader(connection.inputStream))
+                var line: String?
+                val response = StringBuilder()
+
+                while (reader.readLine().also { line = it } != null) {
+                    response.append(line)
+                }
+
+                // Aquí puedes procesar la respuesta del servicio
+                println("Respuesta del servicio: $response")
+                Log.d("SXML","Respuesta del servicio: $response")
             } else {
-                false
+                // Manejar errores de conexión
+                println("Error en la conexión: $responseCode")
             }
-        } catch (e: Exception) {
-            Log.e("SNRepository", "Error en autenticación", e)
-            false
+
+            // Cerrar la conexión
+            connection.disconnect()
+        } catch (e: IOException) {
+            // Manejar excepciones de conexión
+            e.printStackTrace()
         }
     }
 
-    /**
-     * Obtiene el usuario autenticado como objeto
-     */
-    override suspend fun accesoObjeto(matricula: String, contrasenia: String): Usuario {
-        return if (acceso(matricula, contrasenia)) {
-            Usuario(matricula = matricula)
-        } else {
-            Usuario(matricula = "")
-        }
-    }
-
-    /**
-     * Obtiene el perfil académico del estudiante
-     */
-    override suspend fun profile(matricula: String): ProfileStudent {
-        return try {
-            val soapBody = bodyperfil.format(matricula)
-            val response = snApiService.perfil(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
-            
-            val xmlString = response.string()
-            Log.d("SNRepository", "Respuesta Perfil XML: $xmlString")
-            
-            // Por ahora retornamos un perfil con la matrícula
-            // En una implementación completa, parseamos el XML con la estructura del DataSet
-            ProfileStudent(
-                matricula = matricula,
-                nombre = "Nombre",
-                apellidos = "Apellidos",
-                carrera = "Carrera",
-                semestre = "Semestre",
-                promedio = "0.0",
-                estado = "Activo",
-                statusMatricula = "Vigente"
-            )
-        } catch (e: Exception) {
-            Log.e("SNRepository", "Error al obtener perfil", e)
-            ProfileStudent()
-        }
-    }
-
-    /**
-     * Obtiene la matrícula del usuario autenticado
-     */
-    override suspend fun getMatricula(): String {
-        return userMatricula
-    }
-}
-
-// Importar MediaType para usar toMediaType()
-private fun String.toMediaType(): okhttp3.MediaType {
-    return okhttp3.MediaType.parse(this) ?: okhttp3.MediaType.parse("application/octet-stream")!!
 }

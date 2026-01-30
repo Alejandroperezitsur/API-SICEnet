@@ -19,78 +19,59 @@
 package com.example.marsphotos.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.marsphotos.ui.screens.LoginScreen
-import com.example.marsphotos.ui.screens.LoginViewModel
-import com.example.marsphotos.ui.screens.ProfileScreen
-import com.example.marsphotos.ui.screens.ProfileViewModel
+import com.example.marsphotos.R
+import com.example.marsphotos.ui.screens.HomeScreen
+import com.example.marsphotos.ui.screens.MarsViewModel
+import com.example.marsphotos.ui.screens.SNViewModel
 
-/**
- * Aplicación principal con navegación entre Login y Profile
- */
 @Composable
 fun MarsPhotosApp() {
-    // Estado para controlar la navegación
-    var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
-    var userMatricula by remember { mutableStateOf("") }
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = { MarsTopAppBar(scrollBehavior = scrollBehavior) }
     ) {
-        when (currentScreen) {
-            AppScreen.LOGIN -> {
-                val loginViewModel: LoginViewModel = viewModel(factory = LoginViewModel.Factory)
-                
-                LoginScreen(
-                    loginUiState = loginViewModel.loginUiState,
-                    matricula = loginViewModel.matricula,
-                    contrasenia = loginViewModel.contrasenia,
-                    onMatriculaChange = loginViewModel::updateMatricula,
-                    onContraseniaChange = loginViewModel::updateContrasenia,
-                    onLoginClick = loginViewModel::login,
-                    onLoginSuccess = { matricula ->
-                        userMatricula = matricula
-                        currentScreen = AppScreen.PROFILE
-                        loginViewModel.resetState()
-                    }
-                )
-            }
+        Surface(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val marsViewModel: MarsViewModel =
+                viewModel(factory = MarsViewModel.Factory)
 
-            AppScreen.PROFILE -> {
-                val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
-                
-                // Cargar perfil cuando se abre la pantalla
-                if (userMatricula.isNotEmpty()) {
-                    profileViewModel.loadProfile(userMatricula)
-                }
-                
-                ProfileScreen(
-                    profileUiState = profileViewModel.profileUiState,
-                    onBackClick = {
-                        currentScreen = AppScreen.LOGIN
-                        userMatricula = ""
-                    }
-                )
-            }
+            val snViewModel: SNViewModel =
+                viewModel(factory = SNViewModel.Factory)
+
+            HomeScreen(
+                marsUiState = marsViewModel.marsUiState,
+                retryAction = marsViewModel::getMarsPhotos ,
+                contentPadding = it
+            )
         }
     }
 }
 
-/**
- * Enum para controlar las pantallas de la aplicación
- */
-enum class AppScreen {
-    LOGIN,
-    PROFILE
+@Composable
+fun MarsTopAppBar(scrollBehavior: TopAppBarScrollBehavior, modifier: Modifier = Modifier) {
+    CenterAlignedTopAppBar(
+        scrollBehavior = scrollBehavior,
+        title = {
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+        },
+        modifier = modifier
+    )
 }
