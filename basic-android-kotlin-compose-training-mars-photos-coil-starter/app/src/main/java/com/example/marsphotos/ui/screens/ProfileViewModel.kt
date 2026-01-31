@@ -40,17 +40,25 @@ class ProfileViewModel(private val snRepository: SNRepository) : ViewModel() {
      */
     fun loadProfile(matricula: String) {
         viewModelScope.launch {
+            android.util.Log.d("ProfileVM", "Iniciando carga de perfil para $matricula")
             profileUiState = ProfileUiState.Loading
             profileUiState = try {
                 val profile = withContext(Dispatchers.IO) {
-                    snRepository.profile(matricula)
+                    android.util.Log.d("ProfileVM", "Llamando a snRepository.profile...")
+                    val result = snRepository.profile(matricula)
+                    android.util.Log.d("ProfileVM", "snRepository.profile retornó: $result")
+                    result
                 }
+                android.util.Log.d("ProfileVM", "Carga exitosa, actualizando estado a Success")
                 ProfileUiState.Success(profile)
             } catch (e: IOException) {
+                android.util.Log.e("ProfileVM", "Error de IO", e)
                 ProfileUiState.Error("Error de conexión: ${e.message}")
             } catch (e: HttpException) {
+                android.util.Log.e("ProfileVM", "Error HTTP", e)
                 ProfileUiState.Error("Error del servidor: ${e.message}")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                android.util.Log.e("ProfileVM", "Error inesperado (Throwable)", e)
                 ProfileUiState.Error("Error inesperado: ${e.message}")
             }
         }

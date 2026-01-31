@@ -1,5 +1,6 @@
 import android.content.Context
 import android.preference.PreferenceManager
+import android.util.Log
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
@@ -20,16 +21,11 @@ class AddCookiesInterceptor(// We're storing our stuff in a database made just f
             context
         ).getStringSet(PREF_COOKIES, HashSet()) as HashSet<String>?
 
-        // Use the following if you need everything in one line.
-        // Some APIs die if you do it differently.
-        /*String cookiestring = "";
-        for (String cookie : preferences) {
-            String[] parser = cookie.split(";");
-            cookiestring = cookiestring + parser[0] + "; ";
-        }
-        builder.addHeader("Cookie", cookiestring);
-        */for (cookie in preferences!!) {
+        Log.d("AddCookiesInterceptor", "Cookies a enviar: ${preferences?.size ?: 0}")
+        
+        for (cookie in preferences!!) {
             builder.addHeader("Cookie", cookie)
+            Log.d("AddCookiesInterceptor", "Adding Header: Cookie: $cookie")
         }
         return chain.proceed(builder.build())
     }

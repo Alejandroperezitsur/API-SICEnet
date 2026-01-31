@@ -1,5 +1,6 @@
 import android.content.Context
 import android.preference.PreferenceManager
+import android.util.Log
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -13,8 +14,10 @@ class ReceivedCookiesInterceptor // AddCookiesInterceptor()
             val cookies = PreferenceManager.getDefaultSharedPreferences(
                 context
             ).getStringSet("PREF_COOKIES", HashSet()) as HashSet<String>?
+            
             for (header in originalResponse.headers("Set-Cookie")) {
                 cookies!!.add(header)
+                Log.d("ReceivedCookies", "Received Cookie: $header")
             }
             val memes = PreferenceManager.getDefaultSharedPreferences(
                 context

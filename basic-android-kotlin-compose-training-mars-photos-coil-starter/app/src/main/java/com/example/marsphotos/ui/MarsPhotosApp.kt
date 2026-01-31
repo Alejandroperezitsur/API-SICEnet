@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,8 +73,10 @@ fun MarsPhotosApp() {
                 val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
                 
                 // Cargar perfil cuando se abre la pantalla
-                if (userMatricula.isNotEmpty()) {
-                    profileViewModel.loadProfile(userMatricula)
+                LaunchedEffect(userMatricula) {
+                    if (userMatricula.isNotEmpty()) {
+                        profileViewModel.loadProfile(userMatricula)
+                    }
                 }
                 
                 ProfileScreen(
