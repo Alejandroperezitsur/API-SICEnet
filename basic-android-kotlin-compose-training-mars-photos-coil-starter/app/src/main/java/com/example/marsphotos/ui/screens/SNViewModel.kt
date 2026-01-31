@@ -66,7 +66,7 @@ class SNViewModel(private val snRepository: SNRepository) : ViewModel() {
                 SNUiState.Success(
                     //"Success: ${listResult.size} Mars photos retrieved"
                     //"First Mars image URL: ${listResult[0].imgSrc}"
-                    listResult
+                    listResult.toString()
                 )
             } catch (e: IOException) {
                 SNUiState.Error

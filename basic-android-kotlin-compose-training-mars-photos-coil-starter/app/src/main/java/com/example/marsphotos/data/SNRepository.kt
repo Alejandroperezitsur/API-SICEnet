@@ -26,6 +26,7 @@ import com.example.marsphotos.model.Usuario
 import com.example.marsphotos.network.SICENETWService
 import com.example.marsphotos.network.bodyacceso
 import com.example.marsphotos.network.bodyperfil
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.simpleframework.xml.core.Persister
 import java.io.IOException
@@ -51,8 +52,8 @@ interface SNRepository {
  * Implementación local usando base de datos
  */
 class DBLocalSNRepository(val apiDB: Any) : SNRepository {
-    override suspend fun acceso(matricula: String, contrasenia: String): String {
-        return ""
+    override suspend fun acceso(matricula: String, contrasenia: String): Boolean {
+        return false
     }
 
     override suspend fun accesoObjeto(matricula: String, contrasenia: String): Usuario {
@@ -195,6 +196,3 @@ class NetworSNRepository(
 }
 
 // Importar MediaType para usar toMediaType()
-private fun String.toMediaType(): okhttp3.MediaType {
-    return okhttp3.MediaType.parse(this) ?: okhttp3.MediaType.parse("application/octet-stream")!!
-}

@@ -1,6 +1,7 @@
 package com.example.marsphotos.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ fun ProfileScreen(
         modifier = modifier.fillMaxSize()
     ) {
         // Top AppBar
+        @OptIn(ExperimentalMaterial3Api::class)
         TopAppBar(
             title = { Text("Perfil Académico") },
             navigationIcon = {
