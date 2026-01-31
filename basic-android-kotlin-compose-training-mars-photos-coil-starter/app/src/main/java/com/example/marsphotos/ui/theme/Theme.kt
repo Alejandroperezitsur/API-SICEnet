@@ -32,19 +32,19 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = Green80,
+    secondary = GreenGrey80,
+    tertiary = GreenAccent80
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = Green40,
+    secondary = GreenGrey40,
+    tertiary = GreenAccent40
 )
 
 @Composable
-fun MarsPhotosTheme(
+fun SICENETTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     // Dynamic color in this app is turned off for learning purposes

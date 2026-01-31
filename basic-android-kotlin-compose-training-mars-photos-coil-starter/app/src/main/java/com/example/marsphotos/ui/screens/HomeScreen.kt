@@ -46,7 +46,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.marsphotos.R
 import com.example.marsphotos.model.MarsPhoto
-import com.example.marsphotos.ui.theme.MarsPhotosTheme
+import com.example.marsphotos.ui.theme.SICENETTheme
 
 @Composable
 fun HomeScreen(
@@ -161,7 +161,7 @@ fun ResultScreen(photos: String, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun LoadingScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         LoadingScreen()
     }
 }
@@ -169,7 +169,7 @@ fun LoadingScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun ErrorScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         //ErrorScreen()
     }
 }
@@ -177,7 +177,7 @@ fun ErrorScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun PhotosGridScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         val mockData = List(10) { MarsPhoto("$it", "") }
         ResultScreen(stringResource(R.string.placeholder_success))
     }

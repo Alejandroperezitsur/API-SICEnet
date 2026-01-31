@@ -30,7 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.marsphotos.model.ProfileStudent
-import com.example.marsphotos.ui.theme.MarsPhotosTheme
+import com.example.marsphotos.ui.theme.SICENETTheme
 
 /**
  * Pantalla que muestra el perfil académico del estudiante
@@ -242,7 +242,7 @@ fun ProfileErrorScreen(
 @Preview(showBackground = true)
 @Composable
 fun ProfileDetailScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         ProfileDetailScreen(
             profile = ProfileStudent(
                 matricula = "S19120153",
@@ -261,7 +261,7 @@ fun ProfileDetailScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun LoadingProfileScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         LoadingProfileScreen()
     }
 }
@@ -269,9 +269,9 @@ fun LoadingProfileScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun ProfileErrorScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         ProfileErrorScreen(
-            error = "Error al cargar el perfil",
+            error = "Error al cargar perfil",
             onRetryClick = {}
         )
     }

@@ -14,10 +14,10 @@
   ~ limitations under the License.
   -->
 <resources>
-    <string name="app_name">Mars Photos</string>
+    <string name="app_name">SICENET</string>
     <string name="loading_failed">Failed to load</string>
     <string name="retry">Retry</string>
     <string name="loading">Loading</string>
     <string name="placeholder_success">Placeholder text</string>
-    <string name="mars_photo">Mars photo</string>
+    <string name="mars_photo">SICENET</string>
 </resources>

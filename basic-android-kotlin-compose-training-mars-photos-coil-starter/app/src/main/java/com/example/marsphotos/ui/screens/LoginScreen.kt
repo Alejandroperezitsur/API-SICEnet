@@ -28,7 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.marsphotos.R
-import com.example.marsphotos.ui.theme.MarsPhotosTheme
+import com.example.marsphotos.ui.theme.SICENETTheme
 
 /**
  * Pantalla de login para autenticarse en SICENET
@@ -227,7 +227,7 @@ fun LoginErrorScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginFormScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         LoginFormScreen(
             matricula = "",
             contrasenia = "",
@@ -241,7 +241,7 @@ fun LoginFormScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun LoadingLoginScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         LoadingLoginScreen()
     }
 }
@@ -249,7 +249,7 @@ fun LoadingLoginScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 fun LoginErrorScreenPreview() {
-    MarsPhotosTheme {
+    SICENETTheme {
         LoginErrorScreen(
             error = "Credenciales inválidas",
             onRetryClick = {}
