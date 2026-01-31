@@ -26,10 +26,12 @@ import com.example.marsphotos.model.Usuario
 import com.example.marsphotos.network.SICENETWService
 import com.example.marsphotos.network.bodyacceso
 import com.example.marsphotos.network.bodyperfil
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.simpleframework.xml.core.Persister
-import java.io.IOException
 
 /**
  * Interface para acceder a los servicios SICENET
@@ -84,27 +86,60 @@ class NetworSNRepository(
     override suspend fun acceso(matricula: String, contrasenia: String): Boolean {
         return try {
             val soapBody = bodyacceso.format(matricula, contrasenia)
+            Log.d("SNRepository", "===== INICIANDO AUTENTICACIÓN =====")
+            Log.d("SNRepository", "Matrícula: $matricula")
+            Log.d("SNRepository", "URL: https://sicenet.itsur.edu.mx/ws/wsalumnos.asmx")
+            
             val response = snApiService.acceso(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
             
             val xmlString = response.string()
-            Log.d("SNRepository", "Respuesta SOAP: $xmlString")
+            Log.i("SNRepository", "Respuesta SOAP recibida")
             
-            // Parsear la respuesta XML
-            val persister = Persister()
-            val envelope = persister.read(EnvelopeSobreAcceso::class.java, xmlString)
+            // Extraer el JSON de la respuesta SOAP usando regex
+            val jsonPattern = Regex("\\{.*\\}")
+            val jsonMatch = jsonPattern.find(xmlString)
             
-            val result = envelope.body?.accesoLoginResponse?.accesoLoginResult
-            Log.d("SNRepository", "Resultado: $result")
-            
-            // Guardar la matrícula si la autenticación fue exitosa
-            if (result?.lowercase()?.contains("true") == true || result?.lowercase()?.contains("ok") == true) {
-                userMatricula = matricula
-                true
-            } else {
+            if (jsonMatch == null) {
+                Log.w("SNRepository", "❌ FALLO: No se encontró JSON en la respuesta")
+                Log.d("SNRepository", "Respuesta completa:\n$xmlString")
                 false
+            } else {
+                val jsonString = jsonMatch.value.trim()
+                Log.d("SNRepository", "JSON extraído: $jsonString")
+                
+                // Parsear el JSON
+                val jsonObject = Json.parseToJsonElement(jsonString).jsonObject
+                val accesoValue = jsonObject["acceso"]?.jsonPrimitive?.content
+                
+                Log.d("SNRepository", "Valor de 'acceso': $accesoValue")
+                
+                val success = when {
+                    accesoValue == null -> {
+                        Log.w("SNRepository", "❌ FALLO: Campo 'acceso' no encontrado en JSON")
+                        false
+                    }
+                    accesoValue.lowercase() == "true" -> {
+                        Log.d("SNRepository", "✅ ÉXITO: acceso es true")
+                        userMatricula = matricula
+                        true
+                    }
+                    accesoValue.lowercase() == "1" -> {
+                        Log.d("SNRepository", "✅ ÉXITO: acceso es 1")
+                        userMatricula = matricula
+                        true
+                    }
+                    else -> {
+                        Log.w("SNRepository", "❌ FALLO: acceso es $accesoValue")
+                        false
+                    }
+                }
+                
+                Log.d("SNRepository", if (success) "✅ Autenticación exitosa" else "❌ Autenticación fallida")
+                success
             }
         } catch (e: Exception) {
-            Log.e("SNRepository", "Error en autenticación", e)
+            Log.e("SNRepository", "❌ EXCEPCIÓN en autenticación: ${e.message}", e)
+            e.printStackTrace()
             false
         }
     }
