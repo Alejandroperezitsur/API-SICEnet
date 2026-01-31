@@ -18,6 +18,7 @@ package com.example.marsphotos.data
 import AddCookiesInterceptor
 import ReceivedCookiesInterceptor
 import android.content.Context
+import android.util.Log
 import com.example.marsphotos.network.MarsApiService
 import com.example.marsphotos.network.SICENETWService
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -44,7 +45,7 @@ interface AppContainer {
  */
 class DefaultAppContainer(applicationContext: Context) : AppContainer {
     private val baseUrl = "https://android-kotlin-fun-mars-server.appspot.com/"
-    private val baseUrlSN = "https://sicenet.surguanajuato.tecnm.mx"
+    private val baseUrlSN = "https://sicenet.itsur.edu.mx"
     private var client: OkHttpClient
     init {
         client = OkHttpClient()
