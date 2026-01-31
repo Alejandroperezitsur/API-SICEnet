@@ -42,6 +42,7 @@ fun LoginScreen(
     onContraseniaChange: (String) -> Unit,
     onLoginClick: () -> Unit,
     onLoginSuccess: (String) -> Unit,
+    onResetForm: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     when (loginUiState) {
@@ -64,7 +65,7 @@ fun LoginScreen(
         is LoginUiState.Error -> {
             LoginErrorScreen(
                 error = loginUiState.message,
-                onRetryClick = onLoginClick,
+                onRetryClick = onResetForm,
                 modifier = modifier
             )
         }

@@ -77,6 +77,12 @@ class LoginViewModel(private val snRepository: SNRepository) : ViewModel() {
         loginUiState = LoginUiState.Idle
     }
     
+    fun resetForm() {
+        loginUiState = LoginUiState.Idle
+        matricula = ""
+        contrasenia = ""
+    }
+    
     /**
      * Factory para crear instancias de LoginViewModel
      */

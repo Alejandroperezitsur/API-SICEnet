@@ -63,7 +63,8 @@ fun MarsPhotosApp() {
                         userMatricula = matricula
                         currentScreen = AppScreen.PROFILE
                         loginViewModel.resetState()
-                    }
+                    },
+                    onResetForm = loginViewModel::resetForm
                 )
             }
 
