@@ -14,8 +14,8 @@ val bodyacceso =
         <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
           <soap:Body>
             <accesoLogin xmlns="http://tempuri.org/">
-              <strMatricula>%S</strMatricula>
-              <strContrasenia>%S</strContrasenia>   
+              <strMatricula>%s</strMatricula>
+              <strContrasenia>%s</strContrasenia>   
               <tipoUsuario>ALUMNO</tipoUsuario>
             </accesoLogin>
           </soap:Body>
@@ -28,7 +28,7 @@ val bodyperfil =
         <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
           <soap:Body>
             <consultaPerfil xmlns="http://tempuri.org/">
-              <strMatricula>%S</strMatricula>
+              <strMatricula>%s</strMatricula>
             </consultaPerfil>
           </soap:Body>
         </soap:Envelope>
