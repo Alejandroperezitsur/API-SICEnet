@@ -14,6 +14,7 @@ import com.example.marsphotos.data.SNRepository
 import com.example.marsphotos.model.ProfileStudent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -38,10 +39,12 @@ class ProfileViewModel(private val snRepository: SNRepository) : ViewModel() {
      * Carga el perfil académico del estudiante
      */
     fun loadProfile(matricula: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             profileUiState = ProfileUiState.Loading
             profileUiState = try {
-                val profile = snRepository.profile(matricula)
+                val profile = withContext(Dispatchers.IO) {
+                    snRepository.profile(matricula)
+                }
                 ProfileUiState.Success(profile)
             } catch (e: IOException) {
                 ProfileUiState.Error("Error de conexión: ${e.message}")
