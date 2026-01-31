@@ -84,62 +84,60 @@ class NetworSNRepository(
      * Realiza la autenticación en SICENET
      */
     override suspend fun acceso(matricula: String, contrasenia: String): Boolean {
+        Log.d("SNRepository", "===== INICIANDO AUTENTICACIÓN =====")
+        Log.d("SNRepository", "Matrícula: $matricula")
+        
         return try {
             val soapBody = bodyacceso.format(matricula, contrasenia)
-            Log.d("SNRepository", "===== INICIANDO AUTENTICACIÓN =====")
-            Log.d("SNRepository", "Matrícula: $matricula")
-            Log.d("SNRepository", "URL: https://sicenet.itsur.edu.mx/ws/wsalumnos.asmx")
-            
             val response = snApiService.acceso(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
-            
             val xmlString = response.string()
-            Log.i("SNRepository", "Respuesta SOAP recibida")
             
-            // Extraer el JSON de la respuesta SOAP usando regex
-            val jsonPattern = Regex("\\{.*\\}")
-            val jsonMatch = jsonPattern.find(xmlString)
+            Log.d("SNRepository", "Respuesta recibida, intentando extraer JSON...")
             
-            if (jsonMatch == null) {
-                Log.w("SNRepository", "❌ FALLO: No se encontró JSON en la respuesta")
-                Log.d("SNRepository", "Respuesta completa:\n$xmlString")
-                false
-            } else {
-                val jsonString = jsonMatch.value.trim()
-                Log.d("SNRepository", "JSON extraído: $jsonString")
-                
-                // Parsear el JSON
-                val jsonObject = Json.parseToJsonElement(jsonString).jsonObject
-                val accesoValue = jsonObject["acceso"]?.jsonPrimitive?.content
-                
-                Log.d("SNRepository", "Valor de 'acceso': $accesoValue")
-                
-                val success = when {
-                    accesoValue == null -> {
-                        Log.w("SNRepository", "❌ FALLO: Campo 'acceso' no encontrado en JSON")
-                        false
-                    }
-                    accesoValue.lowercase() == "true" -> {
-                        Log.d("SNRepository", "✅ ÉXITO: acceso es true")
-                        userMatricula = matricula
-                        true
-                    }
-                    accesoValue.lowercase() == "1" -> {
-                        Log.d("SNRepository", "✅ ÉXITO: acceso es 1")
-                        userMatricula = matricula
-                        true
-                    }
-                    else -> {
-                        Log.w("SNRepository", "❌ FALLO: acceso es $accesoValue")
+            // Extraer el JSON de la respuesta SOAP
+            val startIdx = xmlString.indexOf('{')
+            val endIdx = xmlString.lastIndexOf('}')
+            
+            when {
+                startIdx == -1 || endIdx == -1 -> {
+                    Log.w("SNRepository", "❌ No se encontró JSON en la respuesta")
+                    Log.d("SNRepository", "Respuesta: $xmlString")
+                    false
+                }
+                else -> {
+                    val jsonString = xmlString.substring(startIdx, endIdx + 1).trim()
+                    Log.d("SNRepository", "JSON extraído: $jsonString")
+                    
+                    try {
+                        val jsonObject = Json.parseToJsonElement(jsonString).jsonObject
+                        val accesoValue = jsonObject["acceso"]?.jsonPrimitive?.content
+                        
+                        Log.d("SNRepository", "Valor de 'acceso': $accesoValue")
+                        
+                        when {
+                            accesoValue?.lowercase() == "true" -> {
+                                Log.d("SNRepository", "✅ ÉXITO: acceso es true")
+                                userMatricula = matricula
+                                true
+                            }
+                            accesoValue?.lowercase() == "1" -> {
+                                Log.d("SNRepository", "✅ ÉXITO: acceso es 1")
+                                userMatricula = matricula
+                                true
+                            }
+                            else -> {
+                                Log.w("SNRepository", "❌ Autenticación fallida: acceso=$accesoValue")
+                                false
+                            }
+                        }
+                    } catch (parseE: Exception) {
+                        Log.e("SNRepository", "❌ Error parseando JSON: ${parseE.message}", parseE)
                         false
                     }
                 }
-                
-                Log.d("SNRepository", if (success) "✅ Autenticación exitosa" else "❌ Autenticación fallida")
-                success
             }
         } catch (e: Exception) {
-            Log.e("SNRepository", "❌ EXCEPCIÓN en autenticación: ${e.message}", e)
-            e.printStackTrace()
+            Log.e("SNRepository", "❌ Error en autenticación: ${e.message}", e)
             false
         }
     }
