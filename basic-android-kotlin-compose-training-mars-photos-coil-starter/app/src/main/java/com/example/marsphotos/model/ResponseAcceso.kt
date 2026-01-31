@@ -67,3 +67,47 @@ data class ConsultaPerfilResponse(
     @Element(name = "consultaPerfilResult", required = false)
     val consultaPerfilResult: String? = null
 )
+// Clases auxiliares para parsear el DataSet XML del perfil
+@Serializable
+@Root(name = "DataSet", strict = false)
+data class PerfilDataSet(
+    @field:Element(name = "Alumno", required = false)
+    @param:Element(name = "Alumno", required = false)
+    val alumno: AlumnoInfo? = null
+)
+
+@Serializable
+@Root(name = "Alumno", strict = false)
+data class AlumnoInfo(
+    @field:Element(name = "Matricula", required = false)
+    @param:Element(name = "Matricula", required = false)
+    val matricula: String? = null,
+    
+    @field:Element(name = "Nombre", required = false)
+    @param:Element(name = "Nombre", required = false)
+    val nombre: String? = null,
+    
+    @field:Element(name = "Apellidos", required = false)
+    @param:Element(name = "Apellidos", required = false)
+    val apellidos: String? = null,
+    
+    @field:Element(name = "Carrera", required = false)
+    @param:Element(name = "Carrera", required = false)
+    val carrera: String? = null,
+    
+    @field:Element(name = "Semestre", required = false)
+    @param:Element(name = "Semestre", required = false)
+    val semestre: String? = null,
+    
+    @field:Element(name = "Promedio", required = false)
+    @param:Element(name = "Promedio", required = false)
+    val promedio: String? = null,
+    
+    @field:Element(name = "Estado", required = false)
+    @param:Element(name = "Estado", required = false)
+    val estado: String? = null,
+    
+    @field:Element(name = "StatusMatricula", required = false)
+    @param:Element(name = "StatusMatricula", required = false)
+    val statusMatricula: String? = null
+)

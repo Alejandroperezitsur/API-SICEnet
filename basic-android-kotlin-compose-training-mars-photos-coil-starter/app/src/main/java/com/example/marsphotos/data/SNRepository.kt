@@ -17,8 +17,10 @@ package com.example.marsphotos.data
 
 import android.util.Log
 import com.example.marsphotos.model.AccesoLoginResponse
+import com.example.marsphotos.model.AlumnoInfo
 import com.example.marsphotos.model.BodyAccesoResponse
 import com.example.marsphotos.model.EnvelopeSobreAcceso
+import com.example.marsphotos.model.PerfilDataSet
 import com.example.marsphotos.model.ProfileStudent
 import com.example.marsphotos.model.Usuario
 import com.example.marsphotos.network.SICENETWService
@@ -128,21 +130,59 @@ class NetworSNRepository(
             val xmlString = response.string()
             Log.d("SNRepository", "Respuesta Perfil XML: $xmlString")
             
-            // Por ahora retornamos un perfil con la matrícula
-            // En una implementación completa, parseamos el XML con la estructura del DataSet
-            ProfileStudent(
-                matricula = matricula,
-                nombre = "Nombre",
-                apellidos = "Apellidos",
-                carrera = "Carrera",
-                semestre = "Semestre",
-                promedio = "0.0",
-                estado = "Activo",
-                statusMatricula = "Vigente"
-            )
+            // Parsear la respuesta SOAP
+            val persister = Persister()
+            
+            // Intenta parsear como PerfilDataSet si contiene datos
+            val profileData = try {
+                if (xmlString.contains("<Alumno>") || xmlString.contains("<Alumno ")) {
+                    persister.read(PerfilDataSet::class.java, xmlString)
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                Log.w("SNRepository", "No se pudo parsear como PerfilDataSet", e)
+                null
+            }
+            
+            // Si logramos parsear los datos, usarlos; si no, retornar con valores vacíos
+            if (profileData?.alumno != null) {
+                val alumno = profileData.alumno
+                ProfileStudent(
+                    matricula = alumno.matricula ?: matricula,
+                    nombre = alumno.nombre ?: "",
+                    apellidos = alumno.apellidos ?: "",
+                    carrera = alumno.carrera ?: "",
+                    semestre = alumno.semestre ?: "",
+                    promedio = alumno.promedio ?: "0.0",
+                    estado = alumno.estado ?: "Activo",
+                    statusMatricula = alumno.statusMatricula ?: "Vigente"
+                )
+            } else {
+                // Retornar perfil con datos básicos si no se puede parsear
+                ProfileStudent(
+                    matricula = matricula,
+                    nombre = "Alumno",
+                    apellidos = "",
+                    carrera = "No disponible",
+                    semestre = "N/A",
+                    promedio = "N/A",
+                    estado = "Activo",
+                    statusMatricula = "Vigente"
+                )
+            }
         } catch (e: Exception) {
             Log.e("SNRepository", "Error al obtener perfil", e)
-            ProfileStudent()
+            ProfileStudent(
+                matricula = matricula,
+                nombre = "Error",
+                apellidos = "No se pudo cargar el perfil",
+                carrera = "",
+                semestre = "",
+                promedio = "0.0",
+                estado = "Error",
+                statusMatricula = ""
+            )
         }
     }
 
