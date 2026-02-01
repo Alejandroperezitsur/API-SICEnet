@@ -27,6 +27,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.simplexml.SimpleXmlConverterFactory
+import okhttp3.logging.HttpLoggingInterceptor
 
 
 /**
@@ -48,12 +49,21 @@ class DefaultAppContainer(applicationContext: Context) : AppContainer {
     private val baseUrlSN = "https://sicenet.itsur.edu.mx"
     private var client: OkHttpClient
     init {
-        client = OkHttpClient()
+        val logging = HttpLoggingInterceptor()
+        logging.level = HttpLoggingInterceptor.Level.BODY
+
         val builder = OkHttpClient.Builder()
-
-        builder.addInterceptor(AddCookiesInterceptor(applicationContext)) // VERY VERY IMPORTANT
-
-        builder.addInterceptor(ReceivedCookiesInterceptor(applicationContext)) // VERY VERY IMPORTANT
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x86) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
+                    .header("Accept", "text/xml, application/xml, */*")
+                    .header("Referer", baseUrlSN + "/")
+                    .build()
+                chain.proceed(request)
+            }
+            .addInterceptor(AddCookiesInterceptor(applicationContext))
+            .addInterceptor(ReceivedCookiesInterceptor(applicationContext))
+            .addInterceptor(logging)
 
         client = builder.build()
     }

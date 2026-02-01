@@ -101,18 +101,27 @@ class NetworSNRepository(
         return try {
             val safeMatricula = escapeXml(matricula)
             val safeContrasenia = escapeXml(contrasenia)
-            val soapBody = bodyacceso.format(safeMatricula, safeContrasenia)
+            val soapBody = bodyacceso.format(safeMatricula.uppercase(), safeContrasenia)
             
             Log.d("SNRepository", "Enviando SOAP Body (truncado): ${soapBody.take(100)}...")
             
             // Usamos text/xml; charset=utf-8 explícitamente
-            val response = snApiService.acceso(soapBody.toRequestBody("text/xml;charset=utf-8".toMediaType()))
-            val xmlString = response.string()
+            val response = try {
+                snApiService.acceso(soapBody.toRequestBody("text/xml;charset=utf-8".toMediaType()))
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                Log.e("SNRepository", "❌ HTTP Error ${e.code()}: $errorBody")
+                throw e
+            }
             
+            val xmlString = response.string()
             Log.d("SNRepository", "Respuesta XML recibida: $xmlString")
             
-            // La respuesta suele venir como un JSON string dentro del XML o directamente XML
-            // Intentamos extraer el JSON si existe
+            // Verificación robusta de éxito
+            if (xmlString.contains("true", ignoreCase = true) || xmlString.contains(">1<")) {
+                userMatricula = matricula
+                return true
+            }
             val startIdx = xmlString.indexOf('{')
             val endIdx = xmlString.lastIndexOf('}')
             
@@ -165,99 +174,94 @@ class NetworSNRepository(
      * Obtiene el perfil académico del estudiante
      */
     override suspend fun profile(matricula: String): ProfileStudent {
-        Log.d("SNRepository", "===== OBTENIENDO PERFIL =====")
-        return try {
-            val soapBody = bodyperfil.format(matricula)
-            val response = snApiService.perfil(soapBody.toRequestBody("text/xml;charset=utf-8".toMediaType()))
+        Log.d("SNRepository", "===== OBTENIENDO PERFIL (getAlumnoAcademico) =====")
+        
+        var profile = ProfileStudent(matricula = matricula)
+        var alumnoInfo: com.example.marsphotos.model.AlumnoInfo? = null
+        
+        // 1. Obtener datos via SOAP (getAlumnoAcademico) - No toma parámetros, usa sesión
+        try {
+            val soapBody = bodyperfil
+            Log.d("SNRepository", "Pidiendo Perfil SOAP...")
             
-            val xmlString = response.string()
-            Log.d("SNRepository", "Respuesta Perfil XML: $xmlString")
-            
-            val persister = Persister()
-            var alumno: AlumnoInfo? = null
-            
-            try {
-                // Buscamos el contenido dentro de <consultaPerfilResult>
-                val resultTagStart = "Result>"
-                val startIdx = xmlString.indexOf(resultTagStart)
-                val endIdx = xmlString.lastIndexOf("</")
+            val response = try {
+                snApiService.perfil(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                Log.e("SNRepository", "❌ HTTP Error ${e.code()} en Perfil: $errorBody")
+                null
+            }
+
+            if (response != null) {
+                val xmlString = response.string()
+                Log.d("SNRepository", "Respuesta Perfil XML (truncada): ${xmlString.take(200)}")
                 
-                if (startIdx != -1 && endIdx != -1) {
-                    var innerXml = xmlString.substring(startIdx + resultTagStart.length, endIdx)
-                    // Decodificar entidades XML si es necesario
-                    innerXml = innerXml.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                try {
+                    val persister = Persister()
+                    // Usamos el nuevo modelo EnvelopeSobreAlumno
+                    val envelope = persister.read(com.example.marsphotos.model.EnvelopeSobreAlumno::class.java, xmlString)
+                    val resultXml = envelope.body?.getAlumnoAcademicoResponse?.getAlumnoAcademicoResult
                     
-                    if (innerXml.contains("<Alumno>")) {
-                        // El XML interno suele empezar con <DataSet> o similar
-                        val xmlToParse = if (innerXml.contains("<DataSet")) {
-                            innerXml.substring(innerXml.indexOf("<DataSet"))
-                        } else {
-                            innerXml
+                    if (!resultXml.isNullOrBlank()) {
+                        Log.d("SNRepository", "Contenido de getAlumnoAcademicoResult extraído, intentando parsear DataSet...")
+                        // El resultado suele ser otro XML (DataSet) codificado - lo intentamos parsear si contiene etiquetas
+                        if (resultXml.contains("<Alumno>")) {
+                            val innerXml = if (resultXml.contains("<DataSet")) {
+                                resultXml.substring(resultXml.indexOf("<DataSet"))
+                            } else {
+                                resultXml
+                            }
+                            alumnoInfo = persister.read(com.example.marsphotos.model.PerfilDataSet::class.java, innerXml).alumno
+                            Log.d("SNRepository", "✅ Datos de AlumnoInfo parseados: ${alumnoInfo?.nombre}")
                         }
-                        alumno = persister.read(PerfilDataSet::class.java, xmlToParse).alumno
                     }
+                } catch (e: Exception) {
+                    Log.e("SNRepository", "Error parseando XML de Respuesta Perfil", e)
                 }
-            } catch (e: Exception) {
-                Log.w("SNRepository", "Error parseando XML interno", e)
             }
-            
-            var fotoUrl = ""
-            var especialidad = ""
-            var cdtsReunidos = ""
-            var cdtsActuales = ""
-            var inscrito = ""
-            var reinscripcion = ""
-            var sinAdeudos = ""
-            var semActual = ""
-            var estatusAcademico = ""
-            var estatusAlumno = ""
+        } catch (e: Exception) {
+            Log.e("SNRepository", "Excepción en flujo SOAP Perfil", e)
+        }
+
+        // 2. Enriquecer con Scraping (JSoup) para lo que SOAP no da o como fallback
+        try {
+            Log.d("SNRepository", "Iniciando scraping HTML (frmPlataformaAlumno.aspx)...")
+            val resp = snApiService.plataforma()
+            val html = resp.string()
+            val doc = Jsoup.parse(html, "https://sicenet.itsur.edu.mx")
+
+            // Actualizamos los campos si los encontramos en el HTML
+            val fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto], [src*=Foto]")?.absUrl("src") ?: ""
+            val especialidad = doc.selectFirst("td:contains(Especialidad) + td, #lblEspecialidad")?.text()?.trim() ?: ""
+            val cdtsReunidos = doc.selectFirst("td:contains(Cdts. Reunidos) + td, #lblCdtsReunidos")?.text()?.trim() ?: "0"
+            val cdtsActuales = doc.selectFirst("td:contains(Cdts. Actuales) + td, #lblCdtsActuales")?.text()?.trim() ?: "0"
+            val semActual = doc.selectFirst("td:contains(Sem. Actual) + td, #lblSemActual")?.text()?.trim() ?: "0"
+            val inscrito = doc.selectFirst("td:contains(Inscrito) + td, #lblInscrito")?.text()?.trim() ?: "NO"
+            val reinscripcion = doc.selectFirst("td:contains(Fecha) + td, #lblFechaReinscripcion")?.text()?.trim() ?: "PENDIENTE"
+            val estatusAcademico = doc.selectFirst("td:contains(Estatus Académico) + td, #lblEstatusAcademico")?.text()?.trim() ?: ""
+            val estatusAlumno = doc.selectFirst("td:contains(Estatus) + td, #lblEstatus")?.text()?.trim() ?: ""
+            val sinAdeudos = doc.select("td, span").find { it.text().contains("ADEUDOS") }?.text()?.trim() ?: ""
+
             val operaciones = mutableListOf<String>()
-            
-            try {
-                Log.d("SNRepository", "Cargando plataforma HTML...")
-                val resp = snApiService.plataforma()
-                val html = resp.string()
-                val doc = Jsoup.parse(html, "https://sicenet.itsur.edu.mx")
-
-                // Selectores específicos basados en la estructura recurrente de SICEnet
-                fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto], [src*=Foto]")?.absUrl("src") ?: ""
-                
-                especialidad = doc.selectFirst("td:contains(Especialidad) + td, #lblEspecialidad")?.text()?.trim() ?: ""
-                cdtsReunidos = doc.selectFirst("td:contains(Cdts. Reunidos) + td, #lblCdtsReunidos")?.text()?.trim() ?: "0"
-                cdtsActuales = doc.selectFirst("td:contains(Cdts. Actuales) + td, #lblCdtsActuales")?.text()?.trim() ?: "0"
-                semActual = doc.selectFirst("td:contains(Sem. Actual) + td, #lblSemActual")?.text()?.trim() ?: "0"
-                inscrito = doc.selectFirst("td:contains(Inscrito) + td, #lblInscrito")?.text()?.trim() ?: "NO"
-                reinscripcion = doc.selectFirst("td:contains(Fecha) + td, #lblFechaReinscripcion")?.text()?.trim() ?: "PENDIENTE"
-                
-                estatusAcademico = doc.selectFirst("td:contains(Estatus Académico) + td, #lblEstatusAcademico")?.text()?.trim() ?: ""
-                estatusAlumno = doc.selectFirst("td:contains(Estatus) + td, #lblEstatus")?.text()?.trim() ?: ""
-                
-                sinAdeudos = doc.select("td, span").find { it.text().contains("ADEUDOS") }?.text()?.trim() ?: ""
-
-                // Operaciones Académicas (Enlaces del menú)
-                doc.select("a").forEach { a ->
-                    val txt = a.text().uppercase()
-                    if (txt.contains("CALIFICACIONES") || txt.contains("KARDEX") || 
-                        txt.contains("MONITOREO") || txt.contains("REINSCRIPCION") || 
-                        txt.contains("CARGA") || txt.contains("CERRAR SESION")) {
-                        operaciones.add(txt)
-                    }
+            doc.select("a").forEach { a ->
+                val txt = a.text().uppercase()
+                if (txt.contains("CALIFICACIONES") || txt.contains("KARDEX") || 
+                    txt.contains("MONITOREO") || txt.contains("REINSCRIPCION") || 
+                    txt.contains("CARGA") || txt.contains("CERRAR SESION")) {
+                    operaciones.add(txt)
                 }
-            } catch (e: Exception) {
-                Log.e("SNRepository", "Error Jsoup", e)
             }
 
-            val finalAlumno = alumno ?: AlumnoInfo(matricula = matricula, nombre = "Alumno", apellidos = "Desconocido")
-            
-            ProfileStudent(
-                matricula = finalAlumno.matricula ?: matricula,
-                nombre = finalAlumno.nombre ?: "",
-                apellidos = finalAlumno.apellidos ?: "",
-                carrera = finalAlumno.carrera ?: "",
-                semestre = if (semActual != "0") semActual else (finalAlumno.semestre ?: ""),
-                promedio = finalAlumno.promedio ?: "",
-                estado = finalAlumno.estado ?: "",
-                statusMatricula = finalAlumno.statusMatricula ?: "",
+            // Construimos el perfil final combinando SOAP y HTML
+            profile = ProfileStudent(
+                matricula = alumnoInfo?.matricula ?: matricula,
+                nombre = alumnoInfo?.nombre ?: "",
+                apellidos = alumnoInfo?.apellidos ?: "",
+                carrera = alumnoInfo?.carrera ?: "",
+                semestre = if (semActual != "0") semActual else (alumnoInfo?.semestre ?: ""),
+                promedio = alumnoInfo?.promedio ?: "",
+                estado = alumnoInfo?.estado ?: "",
+                statusMatricula = alumnoInfo?.statusMatricula ?: "",
                 fotoUrl = fotoUrl,
                 especialidad = especialidad,
                 cdtsReunidos = cdtsReunidos,
@@ -271,9 +275,18 @@ class NetworSNRepository(
                 operaciones = operaciones.distinct()
             )
         } catch (e: Exception) {
-            Log.e("SNRepository", "Error perfil", e)
-            throw e
+            Log.e("SNRepository", "Error durante el scraping HTML", e)
+            // Si el scraping falla pero tenemos algo de SOAP (aunque sea el nombre genérico), lo retornamos
+            if (alumnoInfo != null) {
+                profile = ProfileStudent(
+                    matricula = matricula,
+                    nombre = alumnoInfo.nombre ?: "Alumno",
+                    apellidos = alumnoInfo.apellidos ?: ""
+                )
+            }
         }
+        
+        return profile
     }
 
     /**

@@ -91,6 +91,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     // HTML parsing
     implementation("org.jsoup:jsoup:1.16.1")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")

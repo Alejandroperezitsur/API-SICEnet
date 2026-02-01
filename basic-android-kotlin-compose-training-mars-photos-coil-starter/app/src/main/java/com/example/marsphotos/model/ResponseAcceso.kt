@@ -44,28 +44,28 @@ data class AccesoLoginResponse(
     val accesoLoginResult: String? = null
 )
 
-// ============ CONSULTA PERFIL RESPONSE ============
+// ============ GET ALUMNO ACADEMICO RESPONSE ============
 
 @Serializable
 @Root(name = "soap:Envelope", strict = false)
-data class EnvelopeSobrePerfil(
+data class EnvelopeSobreAlumno(
     @field:Element(name = "soap:Body", required = false)
     @param:Element(name = "soap:Body", required = false)
-    val body: BodyPerfilResponse? = null
+    val body: BodyAlumnoResponse? = null
 )
 
 @Serializable
 @Root(name = "soap:Body", strict = false)
-data class BodyPerfilResponse(
-    @Element(name = "consultaPerfilResponse", required = false)
-    val consultaPerfilResponse: ConsultaPerfilResponse? = null
+data class BodyAlumnoResponse(
+    @Element(name = "getAlumnoAcademicoResponse", required = false)
+    val getAlumnoAcademicoResponse: AlumnoAcademicoResponse? = null
 )
 
 @Serializable
-@Root(name = "consultaPerfilResponse", strict = false)
-data class ConsultaPerfilResponse(
-    @Element(name = "consultaPerfilResult", required = false)
-    val consultaPerfilResult: String? = null
+@Root(name = "getAlumnoAcademicoResponse", strict = false)
+data class AlumnoAcademicoResponse(
+    @Element(name = "getAlumnoAcademicoResult", required = false)
+    val getAlumnoAcademicoResult: String? = null
 )
 // Clases auxiliares para parsear el DataSet XML del perfil
 @Serializable
