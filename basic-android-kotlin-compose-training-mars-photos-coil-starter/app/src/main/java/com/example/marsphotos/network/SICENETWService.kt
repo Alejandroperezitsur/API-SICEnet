@@ -51,4 +51,20 @@ interface SICENETWService {
     @GET("/frmPlataformaAlumno.aspx")
     @Streaming
     suspend fun plataforma(): ResponseBody
+
+    @GET("/frmKardex.aspx")
+    @Streaming
+    suspend fun kardex(): ResponseBody
+
+    @GET("/frmCargaAcademica.aspx")
+    @Streaming
+    suspend fun carga(): ResponseBody
+
+    @GET("/frmCalificaciones.aspx")
+    @Streaming
+    suspend fun calificaciones(): ResponseBody
+
+    @GET("/frmMonitoreoGrupos.aspx")
+    @Streaming
+    suspend fun monitoreo(): ResponseBody
 }

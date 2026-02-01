@@ -21,6 +21,9 @@ import com.example.marsphotos.model.AlumnoInfo
 import com.example.marsphotos.model.BodyAccesoResponse
 import com.example.marsphotos.model.EnvelopeSobreAcceso
 import com.example.marsphotos.model.PerfilDataSet
+import com.example.marsphotos.model.MateriaKardex
+import com.example.marsphotos.model.MateriaCarga
+import com.example.marsphotos.model.MateriaParcial
 import com.example.marsphotos.model.ProfileStudent
 import com.example.marsphotos.model.Usuario
 import com.example.marsphotos.network.SICENETWService
@@ -266,19 +269,19 @@ class NetworSNRepository(
         }
 
         // 2. Scraping HTML para complementar (Foto si falta, adeudos, operaciones)
+        var kardexList = mutableListOf<com.example.marsphotos.model.MateriaKardex>()
+        var cargaList = mutableListOf<com.example.marsphotos.model.MateriaCarga>()
+        var parcialesList = mutableListOf<com.example.marsphotos.model.MateriaParcial>()
+
         try {
             Log.e("SNRepository", ">>> Scraping HTML complementario <<<")
             val html = snApiService.plataforma().string()
             val doc = Jsoup.parse(html)
             
-            // Solo actualizamos si no lo tenemos del SOAP/JSON
             if (nombre.isEmpty()) nombre = doc.selectFirst("#lblNombre, .nombre, td:contains(Alumno) + td")?.text()?.trim() ?: ""
             if (fotoUrl.isEmpty()) fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto], [src*=Foto], .foto")?.absUrl("src") ?: ""
             if (especialidad.isEmpty()) especialidad = doc.selectFirst("td:contains(Especialidad) + td, #lblEspecialidad")?.text()?.trim() ?: ""
             if (semestre.isEmpty()) semestre = doc.selectFirst("td:contains(Sem. Actual) + td, #lblSemActual")?.text()?.trim() ?: ""
-            
-            // Campos específicos solicitados por el usuario
-            if (promedio.isEmpty()) promedio = doc.selectFirst("td:contains(Promedio) + td, #lblPromedio, .promedio")?.text()?.trim() ?: ""
             
             estadoScraped = doc.selectFirst("td:contains(Estado) + td, td:contains(Situación) + td, #lblEstado")?.text()?.trim() ?: ""
             statusMatriculaScraped = doc.selectFirst("td:contains(Status Matrícula) + td, td:contains(Estatus Matrícula) + td, #lblStatusMatricula")?.text()?.trim() ?: ""
@@ -293,14 +296,76 @@ class NetworSNRepository(
             
             doc.select("a").forEach { a ->
                 val txt = a.text().uppercase()
-                // El usuario mencionó: CALIFICACIONES, KARDEX, MONITOREO GRUPOS, REINSCRIPCION, CARGA ACADEMICA
                 if (txt.contains("CALIFICACIONES") || txt.contains("KARDEX") || 
                     txt.contains("MONITOREO") || txt.contains("REINSCRIPCION") || 
                     txt.contains("CARGA") || txt.contains("CERRAR SESION")) {
                     operaciones.add(txt)
                 }
             }
-            Log.e("SNRepository", "✅ Scraping completado")
+            Log.e("SNRepository", "✅ Scraping Perfil completado")
+
+            // --- KARDEX ---
+            try {
+                Log.e("SNRepository", ">>> Scraping KARDEX <<<")
+                val kHtml = snApiService.kardex().string()
+                val kDoc = Jsoup.parse(kHtml)
+                promedio = kDoc.selectFirst("td:contains(Promedio general) + td, #lblPromedioGeneral")?.text()?.trim() ?: ""
+                
+                kDoc.select("tr").forEach { tr ->
+                    val tds = tr.select("td")
+                    if (tds.size >= 7 && tds[0].text().firstOrNull()?.isDigit() == true) {
+                        kardexList.add(com.example.marsphotos.model.MateriaKardex(
+                            clave = tds[1].text().trim(),
+                            nombre = tds[2].text().trim(),
+                            calificacion = tds[5].text().trim(),
+                            acreditacion = tds[6].text().trim(),
+                            periodo = tds[7].text().trim() + " " + tds[8].text().trim()
+                        ))
+                    }
+                }
+            } catch (e: Exception) { Log.e("SNRepository", "Error Kardex: ${e.message}") }
+
+            // --- CARGA ---
+            try {
+                Log.e("SNRepository", ">>> Scraping CARGA <<<")
+                val cHtml = snApiService.carga().string()
+                val cDoc = Jsoup.parse(cHtml)
+                cDoc.select("tr").forEach { tr ->
+                    val tds = tr.select("td")
+                    if (tds.size >= 12 && tds[4].text().trim() == "O") { // Fila de materia
+                        cargaList.add(com.example.marsphotos.model.MateriaCarga(
+                            nombre = tds[1].text().split("\n").firstOrNull()?.trim() ?: "",
+                            docente = tds[1].text().split("\n").getOrNull(1)?.trim() ?: "",
+                            grupo = tds[3].text().trim(),
+                            creditos = tds[5].text().trim(),
+                            lunes = tds[6].text().trim(),
+                            martes = tds[7].text().trim(),
+                            miercoles = tds[8].text().trim(),
+                            jueves = tds[9].text().trim(),
+                            viernes = tds[10].text().trim()
+                        ))
+                    }
+                }
+            } catch (e: Exception) { Log.e("SNRepository", "Error Carga: ${e.message}") }
+
+            // --- CALIFICACIONES ---
+            try {
+                Log.e("SNRepository", ">>> Scraping CALIFICACIONES <<<")
+                val pHtml = snApiService.calificaciones().string()
+                val pDoc = Jsoup.parse(pHtml)
+                pDoc.select("tr").forEach { tr ->
+                    val tds = tr.select("td")
+                    if (tds.size >= 8 && tds[0].text().length >= 4) { // Fila de calificaciones
+                        val pars = mutableListOf<String>()
+                        for (i in 2..7) pars.add(tds[i].text().trim())
+                        parcialesList.add(com.example.marsphotos.model.MateriaParcial(
+                            materia = tds[1].text().trim(),
+                            parciales = pars
+                        ))
+                    }
+                }
+            } catch (e: Exception) { Log.e("SNRepository", "Error Parciales: ${e.message}") }
+
         } catch (e: Exception) {
             Log.e("SNRepository", "⚠️ Error en Scraping: ${e.message}")
         }
@@ -311,6 +376,7 @@ class NetworSNRepository(
             "BA" -> "BAJA"
             "EG" -> "EGRESADO"
             "TI" -> "TITULADO"
+            "IN" -> "INSCRITO"
             else -> s
         }
 
@@ -329,8 +395,8 @@ class NetworSNRepository(
             especialidad = clean(especialidad),
             semestre = semestre,
             promedio = promedio,
-            estado = clean(estadoScraped),
-            statusMatricula = clean(statusMatriculaScraped),
+            estado = if (estadoScraped.isEmpty()) "INSCRITO" else clean(estadoScraped),
+            statusMatricula = if (statusMatriculaScraped.isEmpty()) clean(sinAdeudos) else clean(statusMatriculaScraped),
             cdtsReunidos = cdtAc,
             cdtsActuales = cdtAct,
             inscrito = inscritoStr,
@@ -339,7 +405,10 @@ class NetworSNRepository(
             estatusAcademico = clean(estatusAcad),
             fotoUrl = fotoUrl,
             sinAdeudos = clean(sinAdeudos),
-            operaciones = operaciones.distinct()
+            operaciones = operaciones.distinct(),
+            kardex = kardexList,
+            cargaAcademica = cargaList,
+            calificacionesParciales = parcialesList
         )
     }
 

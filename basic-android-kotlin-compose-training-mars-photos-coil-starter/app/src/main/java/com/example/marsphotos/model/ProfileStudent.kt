@@ -25,6 +25,10 @@ data class ProfileStudent(
     val estatusAlumno: String = "",
     val reinscripcionFecha: String = "",
     val sinAdeudos: String = "",
-    val operaciones: List<String> = emptyList()
+    val operaciones: List<String> = emptyList(),
+    // Detalles de operaciones
+    val kardex: List<MateriaKardex> = emptyList(),
+    val cargaAcademica: List<MateriaCarga> = emptyList(),
+    val calificacionesParciales: List<MateriaParcial> = emptyList()
 )
 // (El parsing del DataSet XML se encuentra en ResponseAcceso.kt)
