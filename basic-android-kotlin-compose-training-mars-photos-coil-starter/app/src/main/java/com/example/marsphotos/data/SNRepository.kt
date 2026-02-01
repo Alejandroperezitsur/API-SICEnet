@@ -281,11 +281,12 @@ class NetworSNRepository(
         var califUrl = "/frmCalificaciones.aspx"
 
         try {
-            Log.e("SNRepository", ">>> Scraping HTML complementario <<<")
+            Log.e("SNRepository", ">>> STEP 1: Scraping Plataforma (Session Keep-Alive) <<<")
             val pResponse = snApiService.plataforma()
             val html = pResponse.string()
             val doc = Jsoup.parse(html)
             
+            // Perfil básico del HTML
             if (nombre.isEmpty()) nombre = doc.selectFirst("#lblNombre, .nombre, td:contains(Alumno) + td, b:contains(Bienvenido) + text")?.text()?.trim() ?: ""
             if (fotoUrl.isEmpty()) fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto], [src*=Foto], .foto")?.absUrl("src") ?: ""
             if (especialidad.isEmpty()) especialidad = doc.selectFirst("td:contains(Especialidad) + td, #lblEspecialidad")?.text()?.trim() ?: ""
@@ -309,124 +310,123 @@ class NetworSNRepository(
                     txt.contains("MONITOREO") || txt.contains("REINSCRIPCION") || 
                     txt.contains("CARGA") || txt.contains("CERRAR SESION")) {
                     operaciones.add(txt)
-                    // Capturar URLs reales
                     if (txt.contains("KARDEX")) kardexUrl = href
                     if (txt.contains("CARGA")) cargaUrl = href
                     if (txt.contains("CALIFICACIONES")) califUrl = href
                 }
             }
-            Log.e("SNRepository", "✅ Scraping Perfil completado. URLs: K:$kardexUrl, C:$cargaUrl, P:$califUrl")
+            Log.e("SNRepository", "✅ Step 1 OK. URLs: K:$kardexUrl, C:$cargaUrl, P:$califUrl")
 
-            // --- KARDEX ---
+            // --- STEP 2: KARDEX ---
             try {
-                val finalKUrl = if (kardexUrl.startsWith("http")) kardexUrl else kardexUrl
-                Log.e("SNRepository", ">>> Scraping KARDEX ($finalKUrl) <<<")
-                
-                val kHtml = if (finalKUrl.contains("javascript:")) "" else snApiService.dynamicGet(finalKUrl).string()
-                kHtmlStr = if (kHtml.isEmpty()) "Vacio o JavaScript URL" else if (kHtml.length > 1000) kHtml.take(1000) else kHtml
-                
-                val kDoc = Jsoup.parse(kHtml)
-                kTitle = "KARDEX: " + kDoc.title()
-                
-                promedio = kDoc.selectFirst("td:contains(Promedio general) + td, #lblPromedioGeneral, .promedio")?.text()?.trim() ?: ""
-                
-                kDoc.select("tr").forEach { tr ->
-                    val tds = tr.select("td")
-                    if (tds.size >= 5) {
-                        val rowTxt = tr.text().uppercase()
-                        if (rowTxt.contains("APROBADA") || rowTxt.contains("REPROBADA") || rowTxt.contains("CURSANDO") || (tds[0].text().trim().firstOrNull()?.isDigit() == true)) {
-                            kardexList.add(com.example.marsphotos.model.MateriaKardex(
-                                clave = tds.getOrNull(1)?.text()?.trim() ?: "",
-                                nombre = tds.getOrNull(2)?.text()?.trim() ?: "",
-                                calificacion = if (tds.size > 5) tds[5].text().trim() else "",
-                                acreditacion = if (tds.size > 6) tds[6].text().trim() else "",
-                                periodo = if (tds.size > 8) (tds[7].text().trim() + " " + tds[8].text().trim()) else ""
-                            ))
+                if (kardexUrl.contains("javascript:")) {
+                    kHtmlStr = "URL no válida (JavaScript)"
+                } else {
+                    Log.e("SNRepository", ">>> STEP 2: Fetching KARDEX ($kardexUrl) <<<")
+                    val kHtml = snApiService.dynamicGet(kardexUrl).string()
+                    kHtmlStr = if (kHtml.isEmpty()) "Vacio" else if (kHtml.length > 1000) kHtml.take(1000) else kHtml
+                    val kDoc = Jsoup.parse(kHtml)
+                    kTitle = "KARDEX: " + kDoc.title()
+                    
+                    promedio = kDoc.selectFirst("td:contains(Promedio general) + td, #lblPromedioGeneral, .promedio")?.text()?.trim() ?: ""
+                    
+                    kDoc.select("tr").forEach { tr ->
+                        val tds = tr.select("td")
+                        if (tds.size >= 5) {
+                            val rowTxt = tr.text().uppercase()
+                            if (rowTxt.contains("APROBADA") || rowTxt.contains("REPROBADA") || rowTxt.contains("CURSANDO") || (tds[0].text().trim().firstOrNull()?.isDigit() == true)) {
+                                kardexList.add(com.example.marsphotos.model.MateriaKardex(
+                                    clave = tds.getOrNull(1)?.text()?.trim() ?: "",
+                                    nombre = tds.getOrNull(2)?.text()?.trim() ?: "",
+                                    calificacion = if (tds.size > 5) tds[5].text().trim() else "",
+                                    acreditacion = if (tds.size > 6) tds[6].text().trim() else "",
+                                    periodo = if (tds.size > 8) (tds[7].text().trim() + " " + tds[8].text().trim()) else ""
+                                ))
+                            }
                         }
                     }
+                    Log.e("SNRepository", "✅ Step 2 OK. Kardex items: ${kardexList.size}")
                 }
-                Log.e("SNRepository", "Kardex items: ${kardexList.size}")
             } catch (e: Exception) { 
-                Log.e("SNRepository", "Err Kardex: ${e.message}")
-                kHtmlStr = "ERROR: ${e.message}"
+                kHtmlStr = "ERROR PASO 2: ${e.message}"
             }
 
-            // --- CARGA ---
+            // --- STEP 3: CARGA ---
             try {
-                val finalCUrl = if (cargaUrl.startsWith("http")) cargaUrl else cargaUrl
-                Log.e("SNRepository", ">>> Scraping CARGA ($finalCUrl) <<<")
-                
-                val cHtml = if (finalCUrl.contains("javascript:")) "" else snApiService.dynamicGet(finalCUrl).string()
-                cHtmlStr = if (cHtml.isEmpty()) "Vacio o JavaScript URL" else if (cHtml.length > 1000) cHtml.take(1000) else cHtml
-                
-                val cDoc = Jsoup.parse(cHtml)
-                cTitle = "CARGA: " + cDoc.title()
+                if (cargaUrl.contains("javascript:")) {
+                    cHtmlStr = "URL no válida (JavaScript)"
+                } else {
+                    Log.e("SNRepository", ">>> STEP 3: Fetching CARGA ($cargaUrl) <<<")
+                    val cHtml = snApiService.dynamicGet(cargaUrl).string()
+                    cHtmlStr = if (cHtml.isEmpty()) "Vacio" else if (cHtml.length > 1000) cHtml.take(1000) else cHtml
+                    val cDoc = Jsoup.parse(cHtml)
+                    cTitle = "CARGA: " + cDoc.title()
 
-                cDoc.select("tr").forEach { tr ->
-                    val tds = tr.select("td")
-                    if (tds.size >= 6) { 
-                        val txt = tr.text().uppercase()
-                        if (txt.contains("AULA") || txt.contains("DOCENTE") || tds.any { it.text().trim() == "O" }) {
-                             val possibleNombre = tds.getOrNull(1)?.text()?.split("\n")?.firstOrNull()?.trim() ?: ""
-                             if (possibleNombre.length > 3) {
-                                 cargaList.add(com.example.marsphotos.model.MateriaCarga(
-                                    nombre = possibleNombre,
-                                    docente = tds.getOrNull(1)?.text()?.split("\n")?.getOrNull(1)?.trim() ?: "",
-                                    grupo = tds.getOrNull(3)?.text()?.trim() ?: "",
-                                    creditos = tds.getOrNull(5)?.text()?.trim() ?: "",
-                                    lunes = tds.getOrNull(6)?.text()?.trim() ?: "",
-                                    martes = tds.getOrNull(7)?.text()?.trim() ?: "",
-                                    miercoles = tds.getOrNull(8)?.text()?.trim() ?: "",
-                                    jueves = tds.getOrNull(9)?.text()?.trim() ?: "",
-                                    viernes = tds.getOrNull(10)?.text()?.trim() ?: ""
+                    cDoc.select("tr").forEach { tr ->
+                        val tds = tr.select("td")
+                        if (tds.size >= 6) { 
+                            val txt = tr.text().uppercase()
+                            if (txt.contains("AULA") || txt.contains("DOCENTE") || tds.any { it.text().trim() == "O" }) {
+                                 val possibleNombre = tds.getOrNull(1)?.text()?.split("\n")?.firstOrNull()?.trim() ?: ""
+                                 if (possibleNombre.length > 3) {
+                                     cargaList.add(com.example.marsphotos.model.MateriaCarga(
+                                        nombre = possibleNombre,
+                                        docente = tds.getOrNull(1)?.text()?.split("\n")?.getOrNull(1)?.trim() ?: "",
+                                        grupo = tds.getOrNull(3)?.text()?.trim() ?: "",
+                                        creditos = tds.getOrNull(5)?.text()?.trim() ?: "",
+                                        lunes = tds.getOrNull(6)?.text()?.trim() ?: "",
+                                        martes = tds.getOrNull(7)?.text()?.trim() ?: "",
+                                        miercoles = tds.getOrNull(8)?.text()?.trim() ?: "",
+                                        jueves = tds.getOrNull(9)?.text()?.trim() ?: "",
+                                        viernes = tds.getOrNull(10)?.text()?.trim() ?: ""
+                                    ))
+                                 }
+                            }
+                        }
+                    }
+                    Log.e("SNRepository", "✅ Step 3 OK. Carga items: ${cargaList.size}")
+                }
+            } catch (e: Exception) { 
+                cHtmlStr = "ERROR PASO 3: ${e.message}"
+            }
+
+            // --- STEP 4: CALIFICACIONES ---
+            try {
+                if (califUrl.contains("javascript:")) {
+                    pHtmlStr = "URL no válida (JavaScript)"
+                } else {
+                    Log.e("SNRepository", ">>> STEP 4: Fetching CALIFICACIONES ($califUrl) <<<")
+                    val pHtml = snApiService.dynamicGet(califUrl).string()
+                    pHtmlStr = if (pHtml.isEmpty()) "Vacio" else if (pHtml.length > 1000) pHtml.take(1000) else pHtml
+                    val pDoc = Jsoup.parse(pHtml)
+                    pTitle = "CALIF: " + pDoc.title()
+
+                    pDoc.select("tr").forEach { tr ->
+                        val tds = tr.select("td")
+                        if (tds.size >= 3) { 
+                             val matName = tds.getOrNull(1)?.text()?.trim() ?: ""
+                             if (matName.length > 5 && (tr.text().any { it.isDigit() })) {
+                                val pars = mutableListOf<String>()
+                                for (i in 2 until tds.size) {
+                                    val score = tds[i].text().trim()
+                                    if (score.length <= 3) pars.add(score)
+                                    if (pars.size >= 8) break
+                                }
+                                parcialesList.add(com.example.marsphotos.model.MateriaParcial(
+                                    materia = matName,
+                                    parciales = pars
                                 ))
                              }
                         }
                     }
+                    Log.e("SNRepository", "✅ Step 4 OK. Calif items: ${parcialesList.size}")
                 }
-                Log.e("SNRepository", "Carga items: ${cargaList.size}")
             } catch (e: Exception) { 
-                Log.e("SNRepository", "Err Carga: ${e.message}")
-                cHtmlStr = "ERROR: ${e.message}"
-            }
-
-            // --- CALIFICACIONES ---
-            try {
-                val finalPUrl = if (califUrl.startsWith("http")) califUrl else califUrl
-                Log.e("SNRepository", ">>> Scraping CALIF ($finalPUrl) <<<")
-                
-                val pHtml = if (finalPUrl.contains("javascript:")) "" else snApiService.dynamicGet(finalPUrl).string()
-                pHtmlStr = if (pHtml.isEmpty()) "Vacio o JavaScript URL" else if (pHtml.length > 1000) pHtml.take(1000) else pHtml
-                
-                val pDoc = Jsoup.parse(pHtml)
-                pTitle = "CALIF: " + pDoc.title()
-
-                pDoc.select("tr").forEach { tr ->
-                    val tds = tr.select("td")
-                    if (tds.size >= 3) { 
-                         val matName = tds.getOrNull(1)?.text()?.trim() ?: ""
-                         if (matName.length > 5 && (tr.text().any { it.isDigit() })) {
-                            val pars = mutableListOf<String>()
-                            for (i in 2 until tds.size) {
-                                val score = tds[i].text().trim()
-                                if (score.length <= 3) pars.add(score)
-                                if (pars.size >= 8) break
-                            }
-                            parcialesList.add(com.example.marsphotos.model.MateriaParcial(
-                                materia = matName,
-                                parciales = pars
-                            ))
-                         }
-                    }
-                }
-                Log.e("SNRepository", "Calif items: ${parcialesList.size}")
-            } catch (e: Exception) { 
-                Log.e("SNRepository", "Err Parciales: ${e.message}")
-                pHtmlStr = "ERROR: ${e.message}"
+                pHtmlStr = "ERROR PASO 4: ${e.message}"
             }
 
         } catch (e: Exception) {
-            Log.e("SNRepository", "⚠️ Error en Scraping: ${e.message}")
+            Log.e("SNRepository", "⚠️ Error Crítico en Scraping Secuencial: ${e.message}")
         }
 
         // 3. Mapeo y Limpieza
