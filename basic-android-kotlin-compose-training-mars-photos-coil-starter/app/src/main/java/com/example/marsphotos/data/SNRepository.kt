@@ -319,9 +319,12 @@ class NetworSNRepository(
 
             // --- KARDEX ---
             try {
-                Log.e("SNRepository", ">>> Scraping KARDEX ($kardexUrl) <<<")
-                val kHtml = snApiService.kardex().string()
-                kHtmlStr = if (kHtml.length > 1000) kHtml.take(1000) else kHtml
+                val finalKUrl = if (kardexUrl.startsWith("http")) kardexUrl else kardexUrl
+                Log.e("SNRepository", ">>> Scraping KARDEX ($finalKUrl) <<<")
+                
+                val kHtml = if (finalKUrl.contains("javascript:")) "" else snApiService.dynamicGet(finalKUrl).string()
+                kHtmlStr = if (kHtml.isEmpty()) "Vacio o JavaScript URL" else if (kHtml.length > 1000) kHtml.take(1000) else kHtml
+                
                 val kDoc = Jsoup.parse(kHtml)
                 kTitle = "KARDEX: " + kDoc.title()
                 
@@ -342,14 +345,20 @@ class NetworSNRepository(
                         }
                     }
                 }
-                Log.e("SNRepository", "Kardex parsed items: ${kardexList.size}")
-            } catch (e: Exception) { Log.e("SNRepository", "Error Kardex: ${e.message}") }
+                Log.e("SNRepository", "Kardex items: ${kardexList.size}")
+            } catch (e: Exception) { 
+                Log.e("SNRepository", "Err Kardex: ${e.message}")
+                kHtmlStr = "ERROR: ${e.message}"
+            }
 
             // --- CARGA ---
             try {
-                Log.e("SNRepository", ">>> Scraping CARGA ($cargaUrl) <<<")
-                val cHtml = snApiService.carga().string()
-                cHtmlStr = if (cHtml.length > 1000) cHtml.take(1000) else cHtml
+                val finalCUrl = if (cargaUrl.startsWith("http")) cargaUrl else cargaUrl
+                Log.e("SNRepository", ">>> Scraping CARGA ($finalCUrl) <<<")
+                
+                val cHtml = if (finalCUrl.contains("javascript:")) "" else snApiService.dynamicGet(finalCUrl).string()
+                cHtmlStr = if (cHtml.isEmpty()) "Vacio o JavaScript URL" else if (cHtml.length > 1000) cHtml.take(1000) else cHtml
+                
                 val cDoc = Jsoup.parse(cHtml)
                 cTitle = "CARGA: " + cDoc.title()
 
@@ -375,14 +384,20 @@ class NetworSNRepository(
                         }
                     }
                 }
-                Log.e("SNRepository", "Carga parsed items: ${cargaList.size}")
-            } catch (e: Exception) { Log.e("SNRepository", "Error Carga: ${e.message}") }
+                Log.e("SNRepository", "Carga items: ${cargaList.size}")
+            } catch (e: Exception) { 
+                Log.e("SNRepository", "Err Carga: ${e.message}")
+                cHtmlStr = "ERROR: ${e.message}"
+            }
 
             // --- CALIFICACIONES ---
             try {
-                Log.e("SNRepository", ">>> Scraping CALIFICACIONES ($califUrl) <<<")
-                val pHtml = snApiService.calificaciones().string()
-                pHtmlStr = if (pHtml.length > 1000) pHtml.take(1000) else pHtml
+                val finalPUrl = if (califUrl.startsWith("http")) califUrl else califUrl
+                Log.e("SNRepository", ">>> Scraping CALIF ($finalPUrl) <<<")
+                
+                val pHtml = if (finalPUrl.contains("javascript:")) "" else snApiService.dynamicGet(finalPUrl).string()
+                pHtmlStr = if (pHtml.isEmpty()) "Vacio o JavaScript URL" else if (pHtml.length > 1000) pHtml.take(1000) else pHtml
+                
                 val pDoc = Jsoup.parse(pHtml)
                 pTitle = "CALIF: " + pDoc.title()
 
@@ -404,8 +419,11 @@ class NetworSNRepository(
                          }
                     }
                 }
-                Log.e("SNRepository", "Calificaciones parsed items: ${parcialesList.size}")
-            } catch (e: Exception) { Log.e("SNRepository", "Error Parciales: ${e.message}") }
+                Log.e("SNRepository", "Calif items: ${parcialesList.size}")
+            } catch (e: Exception) { 
+                Log.e("SNRepository", "Err Parciales: ${e.message}")
+                pHtmlStr = "ERROR: ${e.message}"
+            }
 
         } catch (e: Exception) {
             Log.e("SNRepository", "⚠️ Error en Scraping: ${e.message}")

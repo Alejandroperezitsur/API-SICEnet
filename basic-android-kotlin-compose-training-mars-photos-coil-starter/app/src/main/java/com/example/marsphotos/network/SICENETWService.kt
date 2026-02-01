@@ -6,6 +6,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
+import retrofit2.http.Url
 import retrofit2.http.Streaming
 
 
@@ -51,6 +52,11 @@ interface SICENETWService {
     @GET("/frmPlataformaAlumno.aspx")
     @Streaming
     suspend fun plataforma(): ResponseBody
+
+    @GET
+    @Headers("Referer: https://sicenet.itsur.edu.mx/frmPlataformaAlumno.aspx")
+    @Streaming
+    suspend fun dynamicGet(@Url path: String): ResponseBody
 
     @GET("/frmKardex.aspx")
     @Headers("Referer: https://sicenet.itsur.edu.mx/frmPlataformaAlumno.aspx")
