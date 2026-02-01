@@ -187,6 +187,8 @@ class NetworSNRepository(
         var fReins = ""
         var estatusAlu = ""
         var estatusAcad = ""
+        var estadoScraped = ""
+        var statusMatriculaScraped = ""
         var fotoUrl = ""
         var sinAdeudos = ""
         var operaciones = mutableListOf<String>()
@@ -270,17 +272,31 @@ class NetworSNRepository(
             val doc = Jsoup.parse(html)
             
             // Solo actualizamos si no lo tenemos del SOAP/JSON
-            if (nombre.isEmpty()) nombre = doc.selectFirst("#lblNombre, .nombre")?.text()?.trim() ?: ""
-            if (fotoUrl.isEmpty()) fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto]")?.absUrl("src") ?: ""
-            if (especialidad.isEmpty()) especialidad = doc.selectFirst("td:contains(Especialidad) + td")?.text()?.trim() ?: ""
-            if (semestre.isEmpty()) semestre = doc.selectFirst("td:contains(Sem. Actual) + td")?.text()?.trim() ?: ""
+            if (nombre.isEmpty()) nombre = doc.selectFirst("#lblNombre, .nombre, td:contains(Alumno) + td")?.text()?.trim() ?: ""
+            if (fotoUrl.isEmpty()) fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto], [src*=Foto], .foto")?.absUrl("src") ?: ""
+            if (especialidad.isEmpty()) especialidad = doc.selectFirst("td:contains(Especialidad) + td, #lblEspecialidad")?.text()?.trim() ?: ""
+            if (semestre.isEmpty()) semestre = doc.selectFirst("td:contains(Sem. Actual) + td, #lblSemActual")?.text()?.trim() ?: ""
+            
+            // Campos específicos solicitados por el usuario
+            if (promedio.isEmpty()) promedio = doc.selectFirst("td:contains(Promedio) + td, #lblPromedio, .promedio")?.text()?.trim() ?: ""
+            
+            estadoScraped = doc.selectFirst("td:contains(Estado) + td, td:contains(Situación) + td, #lblEstado")?.text()?.trim() ?: ""
+            statusMatriculaScraped = doc.selectFirst("td:contains(Status Matrícula) + td, td:contains(Estatus Matrícula) + td, #lblStatusMatricula")?.text()?.trim() ?: ""
+            
+            val estatusAcadScraped = doc.selectFirst("td:contains(Estatus Académico) + td, #lblEstatusAcademico")?.text()?.trim() ?: ""
+            val estatusAluScraped = doc.selectFirst("td:contains(Estatus Alumno) + td, td:contains(Estatus:) + td, #lblEstatus")?.text()?.trim() ?: ""
+
+            if (estatusAcad.isEmpty()) estatusAcad = estatusAcadScraped
+            if (estatusAlu.isEmpty()) estatusAlu = estatusAluScraped
             
             sinAdeudos = doc.select("td, span").find { it.text().contains("ADEUDOS") }?.text()?.trim() ?: ""
             
             doc.select("a").forEach { a ->
                 val txt = a.text().uppercase()
+                // El usuario mencionó: CALIFICACIONES, KARDEX, MONITOREO GRUPOS, REINSCRIPCION, CARGA ACADEMICA
                 if (txt.contains("CALIFICACIONES") || txt.contains("KARDEX") || 
-                    txt.contains("MONITOREO") || txt.contains("CARGA")) {
+                    txt.contains("MONITOREO") || txt.contains("REINSCRIPCION") || 
+                    txt.contains("CARGA") || txt.contains("CERRAR SESION")) {
                     operaciones.add(txt)
                 }
             }
@@ -289,8 +305,22 @@ class NetworSNRepository(
             Log.e("SNRepository", "⚠️ Error en Scraping: ${e.message}")
         }
 
-        // 3. Limpieza de caracteres (Corregir encoding si es necesario)
-        fun clean(s: String): String = s.replace("?", "Í").replace("í?", "í").replace("A?", "Á").replace("O?", "Ó")
+        // 3. Mapeo y Limpieza
+        fun mapStatus(s: String): String = when(s.uppercase().trim()) {
+            "VI" -> "VIGENTE"
+            "BA" -> "BAJA"
+            "EG" -> "EGRESADO"
+            "TI" -> "TITULADO"
+            else -> s
+        }
+
+        fun clean(s: String): String = s
+            .replace("?", "Í")
+            .replace("í?", "í")
+            .replace("A?", "Á")
+            .replace("O?", "Ó")
+            .replace("&nbsp;", " ")
+            .trim()
 
         return ProfileStudent(
             matricula = matricula,
@@ -299,13 +329,16 @@ class NetworSNRepository(
             especialidad = clean(especialidad),
             semestre = semestre,
             promedio = promedio,
+            estado = clean(estadoScraped),
+            statusMatricula = clean(statusMatriculaScraped),
             cdtsReunidos = cdtAc,
             cdtsActuales = cdtAct,
             inscrito = inscritoStr,
             reinscripcionFecha = fReins,
-            estatusAlumno = estatusAlu,
+            estatusAlumno = mapStatus(estatusAlu),
+            estatusAcademico = clean(estatusAcad),
             fotoUrl = fotoUrl,
-            sinAdeudos = sinAdeudos,
+            sinAdeudos = clean(sinAdeudos),
             operaciones = operaciones.distinct()
         )
     }
