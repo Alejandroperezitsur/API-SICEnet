@@ -220,6 +220,13 @@ fun ProfileDetailScreen(
                         }
                     }
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    val debugInfo = when {
+                        op.contains("KARDEX") -> "Título: ${profile.kardexTitle} | Items: ${profile.kardex.size}"
+                        op.contains("CARGA") -> "Título: ${profile.cargaTitle} | Items: ${profile.cargaAcademica.size}"
+                        op.contains("CALIFICACIONES") -> "Título: ${profile.califTitle} | Items: ${profile.calificacionesParciales.size}"
+                        else -> "Título: N/A | Items: 0"
+                    }
+                    Text(text = debugInfo, fontSize = 11.sp, color = Color.Gray)
                     
                     Column(modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f)) {
                         when {

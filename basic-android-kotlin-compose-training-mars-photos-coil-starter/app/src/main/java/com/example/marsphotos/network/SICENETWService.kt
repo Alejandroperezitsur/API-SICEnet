@@ -53,18 +53,22 @@ interface SICENETWService {
     suspend fun plataforma(): ResponseBody
 
     @GET("/frmKardex.aspx")
+    @Headers("Referer: https://sicenet.itsur.edu.mx/frmPlataformaAlumno.aspx")
     @Streaming
     suspend fun kardex(): ResponseBody
 
     @GET("/frmCargaAcademica.aspx")
+    @Headers("Referer: https://sicenet.itsur.edu.mx/frmPlataformaAlumno.aspx")
     @Streaming
     suspend fun carga(): ResponseBody
 
     @GET("/frmCalificaciones.aspx")
+    @Headers("Referer: https://sicenet.itsur.edu.mx/frmPlataformaAlumno.aspx")
     @Streaming
     suspend fun calificaciones(): ResponseBody
 
     @GET("/frmMonitoreoGrupos.aspx")
+    @Headers("Referer: https://sicenet.itsur.edu.mx/frmPlataformaAlumno.aspx")
     @Streaming
     suspend fun monitoreo(): ResponseBody
 }
