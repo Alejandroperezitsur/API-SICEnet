@@ -157,10 +157,55 @@ fun ProfileDetailScreen(
                 Divider()
 
                 ProfileInfoRow(label = "Carrera", value = profile.carrera)
+                ProfileInfoRow(label = "Especialidad", value = profile.especialidad)
                 ProfileInfoRow(label = "Semestre", value = profile.semestre)
                 ProfileInfoRow(label = "Promedio", value = profile.promedio)
                 ProfileInfoRow(label = "Estado", value = profile.estado)
                 ProfileInfoRow(label = "Status Matrícula", value = profile.statusMatricula)
+                
+                Divider()
+                
+                ProfileInfoRow(label = "Cdts. Reunidos", value = profile.cdtsReunidos)
+                ProfileInfoRow(label = "Cdts. Actuales", value = profile.cdtsActuales)
+                ProfileInfoRow(label = "Inscrito", value = profile.inscrito)
+                ProfileInfoRow(label = "Reinscripción", value = profile.reinscripcionFecha)
+                
+                if (profile.sinAdeudos.isNotEmpty()) {
+                    Text(
+                        text = profile.sinAdeudos,
+                        color = Color(0xFF006400), // Dark Green
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+        }
+
+        if (profile.operaciones.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Operaciones Académicas",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Divider()
+                    
+                    profile.operaciones.forEach { op ->
+                        Text(
+                            text = op,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            fontSize = 14.sp
+                        )
+                    }
+                }
             }
         }
     }
