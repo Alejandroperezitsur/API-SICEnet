@@ -24,7 +24,7 @@ class AddCookiesInterceptor(// We're storing our stuff in a database made just f
         if (preferences != null && preferences.isNotEmpty()) {
             val cookieHeader = preferences.joinToString("; ")
             builder.addHeader("Cookie", cookieHeader)
-            Log.d("AddCookiesInterceptor", "Adding Header: Cookie: $cookieHeader")
+            Log.e("AddCookiesInterceptor", ">>>> SENDING COOKIE: $cookieHeader <<<<")
         }
         
         return chain.proceed(builder.build())

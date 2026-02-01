@@ -48,6 +48,11 @@ data class AccesoLoginResponse(
 
 @Serializable
 @Root(name = "soap:Envelope", strict = false)
+@NamespaceList(
+    Namespace(reference = "http://www.w3.org/2001/XMLSchema-instance", prefix = "xsi"),
+    Namespace(reference = "http://www.w3.org/2001/XMLSchema", prefix = "xsd"),
+    Namespace(prefix = "soap", reference = "http://schemas.xmlsoap.org/soap/envelope/")
+)
 data class EnvelopeSobreAlumno(
     @field:Element(name = "soap:Body", required = false)
     @param:Element(name = "soap:Body", required = false)
