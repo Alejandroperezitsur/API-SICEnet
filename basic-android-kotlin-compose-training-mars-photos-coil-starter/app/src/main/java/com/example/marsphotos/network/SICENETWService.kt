@@ -6,6 +6,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
+import retrofit2.http.Streaming
 
 
 val bodyacceso =
@@ -49,4 +50,9 @@ interface SICENETWService {
     )
     @POST("/ws/wsalumnos.asmx")
     suspend fun perfil(@Body soap: RequestBody): ResponseBody
+
+    // Página principal del alumno (HTML) - se usa para obtener foto y datos que no incluye el servicio SOAP
+    @GET("/frmPlataformaAlumno.aspx")
+    @Streaming
+    suspend fun plataforma(): ResponseBody
 }

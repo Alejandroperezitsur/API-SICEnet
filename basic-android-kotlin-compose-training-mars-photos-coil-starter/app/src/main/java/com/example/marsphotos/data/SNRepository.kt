@@ -32,6 +32,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.simpleframework.xml.core.Persister
+import org.jsoup.Jsoup
+import java.net.URL
 
 /**
  * Interface para acceder a los servicios SICENET
@@ -182,6 +184,50 @@ class NetworSNRepository(
             // Si logramos parsear los datos, usarlos; si no, retornar con valores vacíos
             if (profileData?.alumno != null) {
                 val alumno = profileData.alumno
+                // Intentar también obtener información adicional desde la página HTML
+                var fotoUrl = ""
+                var especialidad = ""
+                var cdtsReunidos = ""
+                var cdtsActuales = ""
+                var inscrito = ""
+                var reinscripcion = ""
+                var sinAdeudos = ""
+                val operaciones = mutableListOf<String>()
+
+                try {
+                    val resp = snApiService.plataforma()
+                    val html = resp.string()
+                    val base = URL("https://sicenet.itsur.edu.mx")
+                    val doc = Jsoup.parse(html, base.toString())
+
+                    // Foto: buscar la primera imagen dentro de la zona de perfil
+                    val img = doc.selectFirst("img#imgAlumno, img[src*=Foto], img[src*=foto], .foto img, img.alumno")
+                    fotoUrl = img?.absUrl("src") ?: img?.attr("src") ?: ""
+
+                    // Campos por label: buscar celdas que contengan los textos solicitados
+                    fun nextText(label: String): String {
+                        return doc.selectFirst("td:contains($label)")?.nextElementSibling()?.text()?.trim() ?: ""
+                    }
+
+                    especialidad = nextText("Especialidad").ifEmpty { nextText("TECNOLOGÍAS") }
+                    cdtsReunidos = nextText("Cdts. Reunidos").ifEmpty { nextText("Créditos Reunidos") }
+                    cdtsActuales = nextText("Cdts. Actuales").ifEmpty { nextText("Créditos Actuales") }
+                    inscrito = nextText("Inscrito").ifEmpty { doc.selectFirst("span:contains(Inscrito)")?.text() ?: "" }
+                    reinscripcion = nextText("Fecha").ifEmpty { nextText("Reinscripción") }
+                    sinAdeudos = doc.selectFirst("td:contains(SIN ADEUDOS)")?.text()?.trim() ?: doc.selectFirst("span:contains(SIN ADEUDOS)")?.text() ?: ""
+
+                    // Operaciones: buscar enlaces del menú de la plataforma
+                    val ops = doc.select("a[href]")
+                    for (op in ops) {
+                        val t = op.text()?.trim() ?: ""
+                        if (t.isNotEmpty() && (t.contains("CALIFICACIONES") || t.contains("KARDEX") || t.contains("REINSCRIPCION") || t.contains("CARGA ACADEMICA") || t.contains("MONITOREO") || t.contains("Cerrar"))) {
+                            operaciones.add(t)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("SNRepository", "No se pudo obtener la página HTML: ${e.message}")
+                }
+
                 ProfileStudent(
                     matricula = alumno.matricula ?: matricula,
                     nombre = alumno.nombre ?: "",
@@ -190,7 +236,15 @@ class NetworSNRepository(
                     semestre = alumno.semestre ?: "",
                     promedio = alumno.promedio ?: "0.0",
                     estado = alumno.estado ?: "Activo",
-                    statusMatricula = alumno.statusMatricula ?: "Vigente"
+                    statusMatricula = alumno.statusMatricula ?: "Vigente",
+                    fotoUrl = fotoUrl,
+                    especialidad = especialidad,
+                    cdtsReunidos = cdtsReunidos,
+                    cdtsActuales = cdtsActuales,
+                    inscrito = inscrito,
+                    reinscripcionFecha = reinscripcion,
+                    sinAdeudos = sinAdeudos,
+                    operaciones = operaciones
                 )
             } else {
                 // Retornar perfil con datos básicos si no se puede parsear

@@ -3,8 +3,12 @@ package com.example.marsphotos.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,8 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import com.example.marsphotos.model.ProfileStudent
 import com.example.marsphotos.ui.theme.SICENETTheme
+import coil.compose.AsyncImage
 
 /**
  * Pantalla que muestra el perfil académico del estudiante
@@ -111,9 +118,24 @@ fun ProfileDetailScreen(
 
                 Divider()
 
-                ProfileInfoRow(label = "Matrícula", value = profile.matricula)
-                ProfileInfoRow(label = "Nombre", value = profile.nombre)
-                ProfileInfoRow(label = "Apellidos", value = profile.apellidos)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (profile.fotoUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = profile.fotoUrl,
+                            contentDescription = "Foto del alumno",
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(Color.LightGray)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+
+                    Column {
+                        ProfileInfoRow(label = "Matrícula", value = profile.matricula)
+                        ProfileInfoRow(label = "Nombre", value = profile.nombre + " " + profile.apellidos)
+                    }
+                }
             }
         }
 

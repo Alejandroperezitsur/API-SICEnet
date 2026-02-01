@@ -13,18 +13,15 @@ data class ProfileStudent(
     val semestre: String = "",
     val promedio: String = "",
     val estado: String = "",
-    val statusMatricula: String = ""
+    val statusMatricula: String = "",
+    // Campos adicionales obtenidos desde la página HTML
+    val fotoUrl: String = "",
+    val especialidad: String = "",
+    val cdtsReunidos: String = "",
+    val cdtsActuales: String = "",
+    val inscrito: String = "",
+    val reinscripcionFecha: String = "",
+    val sinAdeudos: String = "",
+    val operaciones: List<String> = emptyList()
 )
-
-// Clase para parsear la respuesta XML del perfil
-@Serializable
-@Root(name = "DataSet", strict = false)
-data class ProfileDataSet(
-    @field:Element(name = "xs:schema", required = false)
-    @param:Element(name = "xs:schema", required = false)
-    val schema: String? = null,
-    
-    @field:Element(name = "diffgr:diffgram", required = false)
-    @param:Element(name = "diffgr:diffgram", required = false)
-    val diffgram: String? = null
-)
+// (El parsing del DataSet XML se encuentra en ResponseAcceso.kt)
