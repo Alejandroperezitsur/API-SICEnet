@@ -276,12 +276,17 @@ class NetworSNRepository(
         } catch (e: Exception) {
             Log.e("SNRepository", "❌ Error en SOAP: ${e.message}")
         }
+        var kardexUrl = "/frmKardex.aspx"
+        var cargaUrl = "/frmCargaAcademica.aspx"
+        var califUrl = "/frmCalificaciones.aspx"
+
         try {
             Log.e("SNRepository", ">>> Scraping HTML complementario <<<")
-            val html = snApiService.plataforma().string()
+            val pResponse = snApiService.plataforma()
+            val html = pResponse.string()
             val doc = Jsoup.parse(html)
             
-            if (nombre.isEmpty()) nombre = doc.selectFirst("#lblNombre, .nombre, td:contains(Alumno) + td")?.text()?.trim() ?: ""
+            if (nombre.isEmpty()) nombre = doc.selectFirst("#lblNombre, .nombre, td:contains(Alumno) + td, b:contains(Bienvenido) + text")?.text()?.trim() ?: ""
             if (fotoUrl.isEmpty()) fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto], [src*=Foto], .foto")?.absUrl("src") ?: ""
             if (especialidad.isEmpty()) especialidad = doc.selectFirst("td:contains(Especialidad) + td, #lblEspecialidad")?.text()?.trim() ?: ""
             if (semestre.isEmpty()) semestre = doc.selectFirst("td:contains(Sem. Actual) + td, #lblSemActual")?.text()?.trim() ?: ""
@@ -299,21 +304,26 @@ class NetworSNRepository(
             
             doc.select("a").forEach { a ->
                 val txt = a.text().uppercase()
+                val href = a.attr("href")
                 if (txt.contains("CALIFICACIONES") || txt.contains("KARDEX") || 
                     txt.contains("MONITOREO") || txt.contains("REINSCRIPCION") || 
                     txt.contains("CARGA") || txt.contains("CERRAR SESION")) {
                     operaciones.add(txt)
+                    // Capturar URLs reales
+                    if (txt.contains("KARDEX")) kardexUrl = href
+                    if (txt.contains("CARGA")) cargaUrl = href
+                    if (txt.contains("CALIFICACIONES")) califUrl = href
                 }
             }
-            Log.e("SNRepository", "✅ Scraping Perfil completado")
+            Log.e("SNRepository", "✅ Scraping Perfil completado. URLs: K:$kardexUrl, C:$cargaUrl, P:$califUrl")
 
             // --- KARDEX ---
             try {
-                Log.e("SNRepository", ">>> Scraping KARDEX <<<")
+                Log.e("SNRepository", ">>> Scraping KARDEX ($kardexUrl) <<<")
                 val kHtml = snApiService.kardex().string()
-                kHtmlStr = if (kHtml.length > 300) kHtml.take(300) else kHtml
+                kHtmlStr = if (kHtml.length > 1000) kHtml.take(1000) else kHtml
                 val kDoc = Jsoup.parse(kHtml)
-                kTitle = kDoc.title()
+                kTitle = "KARDEX: " + kDoc.title()
                 
                 promedio = kDoc.selectFirst("td:contains(Promedio general) + td, #lblPromedioGeneral, .promedio")?.text()?.trim() ?: ""
                 
@@ -332,15 +342,16 @@ class NetworSNRepository(
                         }
                     }
                 }
+                Log.e("SNRepository", "Kardex parsed items: ${kardexList.size}")
             } catch (e: Exception) { Log.e("SNRepository", "Error Kardex: ${e.message}") }
 
             // --- CARGA ---
             try {
-                Log.e("SNRepository", ">>> Scraping CARGA <<<")
+                Log.e("SNRepository", ">>> Scraping CARGA ($cargaUrl) <<<")
                 val cHtml = snApiService.carga().string()
-                cHtmlStr = if (cHtml.length > 300) cHtml.take(300) else cHtml
+                cHtmlStr = if (cHtml.length > 1000) cHtml.take(1000) else cHtml
                 val cDoc = Jsoup.parse(cHtml)
-                cTitle = cDoc.title()
+                cTitle = "CARGA: " + cDoc.title()
 
                 cDoc.select("tr").forEach { tr ->
                     val tds = tr.select("td")
@@ -364,15 +375,16 @@ class NetworSNRepository(
                         }
                     }
                 }
+                Log.e("SNRepository", "Carga parsed items: ${cargaList.size}")
             } catch (e: Exception) { Log.e("SNRepository", "Error Carga: ${e.message}") }
 
             // --- CALIFICACIONES ---
             try {
-                Log.e("SNRepository", ">>> Scraping CALIFICACIONES <<<")
+                Log.e("SNRepository", ">>> Scraping CALIFICACIONES ($califUrl) <<<")
                 val pHtml = snApiService.calificaciones().string()
-                pHtmlStr = if (pHtml.length > 300) pHtml.take(300) else pHtml
+                pHtmlStr = if (pHtml.length > 1000) pHtml.take(1000) else pHtml
                 val pDoc = Jsoup.parse(pHtml)
-                pTitle = pDoc.title()
+                pTitle = "CALIF: " + pDoc.title()
 
                 pDoc.select("tr").forEach { tr ->
                     val tds = tr.select("td")
@@ -392,6 +404,7 @@ class NetworSNRepository(
                          }
                     }
                 }
+                Log.e("SNRepository", "Calificaciones parsed items: ${parcialesList.size}")
             } catch (e: Exception) { Log.e("SNRepository", "Error Parciales: ${e.message}") }
 
         } catch (e: Exception) {

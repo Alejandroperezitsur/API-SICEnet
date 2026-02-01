@@ -227,9 +227,14 @@ fun ProfileDetailScreen(
                     }
                     Text(text = debugInfo, fontSize = 11.sp, color = Color.Gray)
                     if (htmlSnip.isNotEmpty()) {
-                        Text(text = "Snippet: ${if(htmlSnip.length > 200) htmlSnip.take(200) else htmlSnip}...", 
-                             fontSize = 10.sp, color = Color.LightGray, maxLines = 3)
+                        Text(text = "Snippet (${htmlSnip.length} bytes):", fontSize = 10.sp, color = Color.Gray)
+                        Text(text = htmlSnip, 
+                             fontSize = 9.sp, 
+                             color = Color.LightGray, 
+                             lineHeight = 12.sp,
+                             maxLines = 15)
                     }
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     Column(modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f)) {
                         when {

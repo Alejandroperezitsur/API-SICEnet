@@ -31,7 +31,7 @@ class ReceivedCookiesInterceptor // AddCookiesInterceptor()
             
             prefs.edit()
                 .putStringSet("PREF_COOKIES", cookieMap.values.toSet())
-                .apply()
+                .commit()
         }
         return originalResponse
     }
