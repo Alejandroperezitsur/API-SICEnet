@@ -33,6 +33,9 @@ data class ProfileStudent(
     // Debug info
     val kardexTitle: String = "",
     val cargaTitle: String = "",
-    val califTitle: String = ""
+    val califTitle: String = "",
+    val kardexHtml: String = "",
+    val cargaHtml: String = "",
+    val califHtml: String = ""
 )
 // (El parsing del DataSet XML se encuentra en ResponseAcceso.kt)

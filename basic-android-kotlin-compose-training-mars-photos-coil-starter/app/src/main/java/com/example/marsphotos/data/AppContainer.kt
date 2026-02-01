@@ -47,6 +47,7 @@ interface AppContainer {
 class DefaultAppContainer(applicationContext: Context) : AppContainer {
     private val baseUrl = "https://android-kotlin-fun-mars-server.appspot.com/"
     private val baseUrlSN = "https://sicenet.itsur.edu.mx"
+
     private var client: OkHttpClient
     init {
         val logging = HttpLoggingInterceptor()
@@ -54,12 +55,20 @@ class DefaultAppContainer(applicationContext: Context) : AppContainer {
 
         val builder = OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x86) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
-                    .header("Accept", "text/xml, application/xml, */*")
-                    .header("Referer", baseUrlSN + "/")
-                    .build()
-                chain.proceed(request)
+                val originalRequest = chain.request()
+                val builder = originalRequest.newBuilder()
+                
+                if (originalRequest.header("User-Agent") == null) {
+                    builder.header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x86) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
+                }
+                if (originalRequest.header("Accept") == null) {
+                    builder.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+                }
+                if (originalRequest.header("Referer") == null) {
+                    builder.header("Referer", baseUrlSN + "/")
+                }
+                
+                chain.proceed(builder.build())
             }
             .addInterceptor(AddCookiesInterceptor(applicationContext))
             .addInterceptor(ReceivedCookiesInterceptor(applicationContext))

@@ -199,6 +199,9 @@ class NetworSNRepository(
         var kTitle = ""
         var cTitle = ""
         var pTitle = ""
+        var kHtmlStr = ""
+        var cHtmlStr = ""
+        var pHtmlStr = ""
         var estadoScraped = ""
         var statusMatriculaScraped = ""
 
@@ -308,6 +311,7 @@ class NetworSNRepository(
             try {
                 Log.e("SNRepository", ">>> Scraping KARDEX <<<")
                 val kHtml = snApiService.kardex().string()
+                kHtmlStr = if (kHtml.length > 300) kHtml.take(300) else kHtml
                 val kDoc = Jsoup.parse(kHtml)
                 kTitle = kDoc.title()
                 
@@ -315,15 +319,15 @@ class NetworSNRepository(
                 
                 kDoc.select("tr").forEach { tr ->
                     val tds = tr.select("td")
-                    if (tds.size >= 7) {
-                        val firstCol = tds[0].text().trim()
-                        if (firstCol.isNotEmpty() && (firstCol.first().isDigit() || firstCol.startsWith("TI"))) {
+                    if (tds.size >= 5) {
+                        val rowTxt = tr.text().uppercase()
+                        if (rowTxt.contains("APROBADA") || rowTxt.contains("REPROBADA") || rowTxt.contains("CURSANDO") || (tds[0].text().trim().firstOrNull()?.isDigit() == true)) {
                             kardexList.add(com.example.marsphotos.model.MateriaKardex(
                                 clave = tds.getOrNull(1)?.text()?.trim() ?: "",
                                 nombre = tds.getOrNull(2)?.text()?.trim() ?: "",
-                                calificacion = tds.getOrNull(5)?.text()?.trim() ?: "",
-                                acreditacion = tds.getOrNull(6)?.text()?.trim() ?: "",
-                                periodo = (tds.getOrNull(7)?.text() ?: "") + " " + (tds.getOrNull(8)?.text() ?: "")
+                                calificacion = if (tds.size > 5) tds[5].text().trim() else "",
+                                acreditacion = if (tds.size > 6) tds[6].text().trim() else "",
+                                periodo = if (tds.size > 8) (tds[7].text().trim() + " " + tds[8].text().trim()) else ""
                             ))
                         }
                     }
@@ -334,25 +338,29 @@ class NetworSNRepository(
             try {
                 Log.e("SNRepository", ">>> Scraping CARGA <<<")
                 val cHtml = snApiService.carga().string()
+                cHtmlStr = if (cHtml.length > 300) cHtml.take(300) else cHtml
                 val cDoc = Jsoup.parse(cHtml)
                 cTitle = cDoc.title()
 
                 cDoc.select("tr").forEach { tr ->
                     val tds = tr.select("td")
-                    if (tds.size >= 10) { 
-                        val txt = tds.text().uppercase()
-                        if (txt.contains("AULA") || tds.any { it.text().trim() == "O" }) {
-                             cargaList.add(com.example.marsphotos.model.MateriaCarga(
-                                nombre = tds.getOrNull(1)?.text()?.split("\n")?.firstOrNull()?.trim() ?: "",
-                                docente = tds.getOrNull(1)?.text()?.split("\n")?.getOrNull(1)?.trim() ?: "",
-                                grupo = tds.getOrNull(3)?.text()?.trim() ?: "",
-                                creditos = tds.getOrNull(5)?.text()?.trim() ?: "",
-                                lunes = tds.getOrNull(6)?.text()?.trim() ?: "",
-                                martes = tds.getOrNull(7)?.text()?.trim() ?: "",
-                                miercoles = tds.getOrNull(8)?.text()?.trim() ?: "",
-                                jueves = tds.getOrNull(9)?.text()?.trim() ?: "",
-                                viernes = tds.getOrNull(10)?.text()?.trim() ?: ""
-                            ))
+                    if (tds.size >= 6) { 
+                        val txt = tr.text().uppercase()
+                        if (txt.contains("AULA") || txt.contains("DOCENTE") || tds.any { it.text().trim() == "O" }) {
+                             val possibleNombre = tds.getOrNull(1)?.text()?.split("\n")?.firstOrNull()?.trim() ?: ""
+                             if (possibleNombre.length > 3) {
+                                 cargaList.add(com.example.marsphotos.model.MateriaCarga(
+                                    nombre = possibleNombre,
+                                    docente = tds.getOrNull(1)?.text()?.split("\n")?.getOrNull(1)?.trim() ?: "",
+                                    grupo = tds.getOrNull(3)?.text()?.trim() ?: "",
+                                    creditos = tds.getOrNull(5)?.text()?.trim() ?: "",
+                                    lunes = tds.getOrNull(6)?.text()?.trim() ?: "",
+                                    martes = tds.getOrNull(7)?.text()?.trim() ?: "",
+                                    miercoles = tds.getOrNull(8)?.text()?.trim() ?: "",
+                                    jueves = tds.getOrNull(9)?.text()?.trim() ?: "",
+                                    viernes = tds.getOrNull(10)?.text()?.trim() ?: ""
+                                ))
+                             }
                         }
                     }
                 }
@@ -362,14 +370,15 @@ class NetworSNRepository(
             try {
                 Log.e("SNRepository", ">>> Scraping CALIFICACIONES <<<")
                 val pHtml = snApiService.calificaciones().string()
+                pHtmlStr = if (pHtml.length > 300) pHtml.take(300) else pHtml
                 val pDoc = Jsoup.parse(pHtml)
                 pTitle = pDoc.title()
 
                 pDoc.select("tr").forEach { tr ->
                     val tds = tr.select("td")
-                    if (tds.size >= 5) { 
+                    if (tds.size >= 3) { 
                          val matName = tds.getOrNull(1)?.text()?.trim() ?: ""
-                         if (matName.length > 5 && (tds[0].text().firstOrNull()?.isLetterOrDigit() == true)) {
+                         if (matName.length > 5 && (tr.text().any { it.isDigit() })) {
                             val pars = mutableListOf<String>()
                             for (i in 2 until tds.size) {
                                 val score = tds[i].text().trim()
@@ -432,7 +441,10 @@ class NetworSNRepository(
             calificacionesParciales = parcialesList,
             kardexTitle = kTitle,
             cargaTitle = cTitle,
-            califTitle = pTitle
+            califTitle = pTitle,
+            kardexHtml = kHtmlStr,
+            cargaHtml = cHtmlStr,
+            califHtml = pHtmlStr
         )
     }
 

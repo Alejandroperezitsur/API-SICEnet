@@ -219,14 +219,17 @@ fun ProfileDetailScreen(
                             Icon(imageVector = Icons.Filled.Close, contentDescription = "Cerrar")
                         }
                     }
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    val debugInfo = when {
-                        op.contains("KARDEX") -> "Título: ${profile.kardexTitle} | Items: ${profile.kardex.size}"
-                        op.contains("CARGA") -> "Título: ${profile.cargaTitle} | Items: ${profile.cargaAcademica.size}"
-                        op.contains("CALIFICACIONES") -> "Título: ${profile.califTitle} | Items: ${profile.calificacionesParciales.size}"
-                        else -> "Título: N/A | Items: 0"
+                    val (debugInfo, htmlSnip) = when {
+                        op.contains("KARDEX") -> ("Título: ${profile.kardexTitle} | Items: ${profile.kardex.size}") to profile.kardexHtml
+                        op.contains("CARGA") -> ("Título: ${profile.cargaTitle} | Items: ${profile.cargaAcademica.size}") to profile.cargaHtml
+                        op.contains("CALIFICACIONES") -> ("Título: ${profile.califTitle} | Items: ${profile.calificacionesParciales.size}") to profile.califHtml
+                        else -> ("Título: N/A | Items: 0") to ""
                     }
                     Text(text = debugInfo, fontSize = 11.sp, color = Color.Gray)
+                    if (htmlSnip.isNotEmpty()) {
+                        Text(text = "Snippet: ${if(htmlSnip.length > 200) htmlSnip.take(200) else htmlSnip}...", 
+                             fontSize = 10.sp, color = Color.LightGray, maxLines = 3)
+                    }
                     
                     Column(modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f)) {
                         when {
