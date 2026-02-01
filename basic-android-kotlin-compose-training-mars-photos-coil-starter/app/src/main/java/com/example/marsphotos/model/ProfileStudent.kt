@@ -19,7 +19,10 @@ data class ProfileStudent(
     val especialidad: String = "",
     val cdtsReunidos: String = "",
     val cdtsActuales: String = "",
+    val semActual: String = "",
     val inscrito: String = "",
+    val estatusAcademico: String = "",
+    val estatusAlumno: String = "",
     val reinscripcionFecha: String = "",
     val sinAdeudos: String = "",
     val operaciones: List<String> = emptyList()

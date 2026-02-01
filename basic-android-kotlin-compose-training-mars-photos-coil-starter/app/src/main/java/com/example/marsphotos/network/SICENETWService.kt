@@ -10,38 +10,38 @@ import retrofit2.http.Streaming
 
 
 val bodyacceso =
-    """
-        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-          <soap:Body>
-            <accesoLogin xmlns="http://tempuri.org/">
-              <strMatricula>%s</strMatricula>
-              <strContrasenia>%s</strContrasenia>   
-              <tipoUsuario>ALUMNO</tipoUsuario>
-            </accesoLogin>
-          </soap:Body>
-        </soap:Envelope>
-    """.trimIndent()
+    """<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body>
+<accesoLogin xmlns="http://tempuri.org/">
+<strMatricula>%s</strMatricula>
+<strContrasenia>%s</strContrasenia>
+<tipoUsuario>ALUMNO</tipoUsuario>
+</accesoLogin>
+</soap:Body>
+</soap:Envelope>""".trimIndent()
 
 val bodyperfil =
-    """
-        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-          <soap:Body>
-            <consultaPerfil xmlns="http://tempuri.org/">
-              <strMatricula>%s</strMatricula>
-            </consultaPerfil>
-          </soap:Body>
-        </soap:Envelope>
-    """.trimIndent()
+    """<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body>
+<consultaPerfil xmlns="http://tempuri.org/">
+<strMatricula>%s</strMatricula>
+</consultaPerfil>
+</soap:Body>
+</soap:Envelope>""".trimIndent()
 
 interface SICENETWService {
 
     @Headers(
+        "Content-Type: text/xml;charset=utf-8",
         "SOAPAction: http://tempuri.org/accesoLogin"
     )
     @POST("/ws/wsalumnos.asmx")
     suspend fun acceso(@Body soap: RequestBody): ResponseBody
 
     @Headers(
+        "Content-Type: text/xml;charset=utf-8",
         "SOAPAction: http://tempuri.org/consultaPerfil"
     )
     @POST("/ws/wsalumnos.asmx")

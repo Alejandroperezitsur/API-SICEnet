@@ -105,8 +105,8 @@ class NetworSNRepository(
             
             Log.d("SNRepository", "Enviando SOAP Body (truncado): ${soapBody.take(100)}...")
             
-            // Usamos text/xml simple y dejamos que OkHttp maneje el charset por defecto (utf-8)
-            val response = snApiService.acceso(soapBody.toRequestBody("text/xml".toMediaType()))
+            // Usamos text/xml; charset=utf-8 explícitamente
+            val response = snApiService.acceso(soapBody.toRequestBody("text/xml;charset=utf-8".toMediaType()))
             val xmlString = response.string()
             
             Log.d("SNRepository", "Respuesta XML recibida: $xmlString")
@@ -144,15 +144,9 @@ class NetworSNRepository(
             }
             
             false
-        } catch (e: HttpException) {
-             Log.e("SNRepository", "Error HTTP: ${e.code()} - ${e.message()}")
-             try {
-                 Log.e("SNRepository", "Error Body: ${e.response()?.errorBody()?.string()}")
-             } catch (_: Exception) {}
-             false
         } catch (e: Exception) {
             Log.e("SNRepository", "❌ Error en autenticación: ${e.message}", e)
-            false
+            throw e
         }
     }
 
@@ -174,29 +168,39 @@ class NetworSNRepository(
         Log.d("SNRepository", "===== OBTENIENDO PERFIL =====")
         return try {
             val soapBody = bodyperfil.format(matricula)
-            val response = snApiService.perfil(soapBody.toRequestBody("text/xml".toMediaType()))
+            val response = snApiService.perfil(soapBody.toRequestBody("text/xml;charset=utf-8".toMediaType()))
             
             val xmlString = response.string()
             Log.d("SNRepository", "Respuesta Perfil XML: $xmlString")
             
-            // Parsear la respuesta SOAP
             val persister = Persister()
             var alumno: AlumnoInfo? = null
             
             try {
-                // SimpleXML puede fallar si el XML tiene namespaces complejos no mapeados
-                // Buscamos directamente el tag <Alumno> para ver si hay datos
-                if (xmlString.contains("<Alumno>") || xmlString.contains("<Alumno ")) {
-                    // Intentamos parsear todo el dataset
-                    // A veces el XML viene "sucio" o con prefijos, intentamos limpiar o parsear selectivamente
-                    val dataSet = persister.read(PerfilDataSet::class.java, xmlString)
-                    alumno = dataSet.alumno
+                // Buscamos el contenido dentro de <consultaPerfilResult>
+                val resultTagStart = "Result>"
+                val startIdx = xmlString.indexOf(resultTagStart)
+                val endIdx = xmlString.lastIndexOf("</")
+                
+                if (startIdx != -1 && endIdx != -1) {
+                    var innerXml = xmlString.substring(startIdx + resultTagStart.length, endIdx)
+                    // Decodificar entidades XML si es necesario
+                    innerXml = innerXml.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                    
+                    if (innerXml.contains("<Alumno>")) {
+                        // El XML interno suele empezar con <DataSet> o similar
+                        val xmlToParse = if (innerXml.contains("<DataSet")) {
+                            innerXml.substring(innerXml.indexOf("<DataSet"))
+                        } else {
+                            innerXml
+                        }
+                        alumno = persister.read(PerfilDataSet::class.java, xmlToParse).alumno
+                    }
                 }
             } catch (e: Exception) {
-                Log.w("SNRepository", "Error parseando XML con SimpleXML", e)
+                Log.w("SNRepository", "Error parseando XML interno", e)
             }
             
-            // Datos complementarios (HTML)
             var fotoUrl = ""
             var especialidad = ""
             var cdtsReunidos = ""
@@ -204,63 +208,45 @@ class NetworSNRepository(
             var inscrito = ""
             var reinscripcion = ""
             var sinAdeudos = ""
+            var semActual = ""
+            var estatusAcademico = ""
+            var estatusAlumno = ""
             val operaciones = mutableListOf<String>()
             
             try {
-                Log.d("SNRepository", "Solicitando plataforma HTML para datos extra...")
+                Log.d("SNRepository", "Cargando plataforma HTML...")
                 val resp = snApiService.plataforma()
                 val html = resp.string()
-                val base = URL("https://sicenet.itsur.edu.mx")
-                val doc = Jsoup.parse(html, base.toString())
+                val doc = Jsoup.parse(html, "https://sicenet.itsur.edu.mx")
 
-                // Foto
-                val img = doc.selectFirst("img#imgAlumno, img[src*=Foto], img[src*=foto], .foto img, img.alumno")
-                fotoUrl = img?.absUrl("src") ?: img?.attr("src") ?: ""
-                Log.d("SNRepository", "Foto URL encontrada: $fotoUrl")
+                // Selectores específicos basados en la estructura recurrente de SICEnet
+                fotoUrl = doc.selectFirst("#imgAlumno, [src*=foto], [src*=Foto]")?.absUrl("src") ?: ""
+                
+                especialidad = doc.selectFirst("td:contains(Especialidad) + td, #lblEspecialidad")?.text()?.trim() ?: ""
+                cdtsReunidos = doc.selectFirst("td:contains(Cdts. Reunidos) + td, #lblCdtsReunidos")?.text()?.trim() ?: "0"
+                cdtsActuales = doc.selectFirst("td:contains(Cdts. Actuales) + td, #lblCdtsActuales")?.text()?.trim() ?: "0"
+                semActual = doc.selectFirst("td:contains(Sem. Actual) + td, #lblSemActual")?.text()?.trim() ?: "0"
+                inscrito = doc.selectFirst("td:contains(Inscrito) + td, #lblInscrito")?.text()?.trim() ?: "NO"
+                reinscripcion = doc.selectFirst("td:contains(Fecha) + td, #lblFechaReinscripcion")?.text()?.trim() ?: "PENDIENTE"
+                
+                estatusAcademico = doc.selectFirst("td:contains(Estatus Académico) + td, #lblEstatusAcademico")?.text()?.trim() ?: ""
+                estatusAlumno = doc.selectFirst("td:contains(Estatus) + td, #lblEstatus")?.text()?.trim() ?: ""
+                
+                sinAdeudos = doc.select("td, span").find { it.text().contains("ADEUDOS") }?.text()?.trim() ?: ""
 
-                // Campos por label
-                fun nextText(label: String): String {
-                    // Busca td con el label y toma el siguiente td
-                    // O busca span/div que contenga el texto
-                    val td = doc.selectFirst("td:contains($label)")
-                    return td?.nextElementSibling()?.text()?.trim() ?: ""
-                }
-                
-                // Helper para buscar texto en celdas cercanas o por ID si fuera necesario
-                // La estructura de SICENET suele ser tablas
-                
-                especialidad = nextText("Especialidad").ifEmpty { nextText("Carrera") } // A veces comparten celda
-                if (especialidad.isEmpty()) especialidad = doc.select("span:contains(TECNOLOGÍAS)").text()
-                
-                cdtsReunidos = nextText("Cdts. Reunidos").ifEmpty { nextText("Créditos Acumulados") }
-                cdtsActuales = nextText("Cdts. Actuales").ifEmpty { nextText("Créditos Inscritos") }
-                
-                inscrito = nextText("Inscrito")
-                if (inscrito.isEmpty()) inscrito = if (html.contains("Inscrito: SI")) "SI" else "NO"
-                
-                reinscripcion = nextText("Fecha").ifEmpty { nextText("Reinscripción") }
-                    
-                    sinAdeudos = doc.selectFirst("td:contains(SIN ADEUDOS)")?.text()?.trim() 
-                                 ?: doc.selectFirst("span:contains(SIN ADEUDOS)")?.text()?.trim()
-                                 ?: ""
-        
-                    // Operaciones
-                val ops = doc.select("a[href]")
-                for (op in ops) {
-                    val t = op.text()?.trim() ?: ""
-                    // Filtramos enlaces comunes del menú
-                    if (t.isNotEmpty() && (t.contains("CALIFICACIONES") || t.contains("KARDEX") || 
-                        t.contains("REINSCRIPCION") || t.contains("CARGA") || t.contains("MONITOREO") || t.contains("Cerrar"))) {
-                        operaciones.add(t)
+                // Operaciones Académicas (Enlaces del menú)
+                doc.select("a").forEach { a ->
+                    val txt = a.text().uppercase()
+                    if (txt.contains("CALIFICACIONES") || txt.contains("KARDEX") || 
+                        txt.contains("MONITOREO") || txt.contains("REINSCRIPCION") || 
+                        txt.contains("CARGA") || txt.contains("CERRAR SESION")) {
+                        operaciones.add(txt)
                     }
                 }
             } catch (e: Exception) {
-                Log.e("SNRepository", "Error parseando HTML", e)
+                Log.e("SNRepository", "Error Jsoup", e)
             }
 
-            // Construir objeto final
-            // Si el XML falló, usamos datos vacíos o lo que hayamos podido rescatar del HTML (aunque el HTML es la fuente secundaria)
-            // Si alumno es null, creamos uno vacío con la matrícula
             val finalAlumno = alumno ?: AlumnoInfo(matricula = matricula, nombre = "Alumno", apellidos = "Desconocido")
             
             ProfileStudent(
@@ -268,7 +254,7 @@ class NetworSNRepository(
                 nombre = finalAlumno.nombre ?: "",
                 apellidos = finalAlumno.apellidos ?: "",
                 carrera = finalAlumno.carrera ?: "",
-                semestre = finalAlumno.semestre ?: "",
+                semestre = if (semActual != "0") semActual else (finalAlumno.semestre ?: ""),
                 promedio = finalAlumno.promedio ?: "",
                 estado = finalAlumno.estado ?: "",
                 statusMatricula = finalAlumno.statusMatricula ?: "",
@@ -276,15 +262,17 @@ class NetworSNRepository(
                 especialidad = especialidad,
                 cdtsReunidos = cdtsReunidos,
                 cdtsActuales = cdtsActuales,
+                semActual = semActual,
                 inscrito = inscrito,
+                estatusAcademico = estatusAcademico,
+                estatusAlumno = estatusAlumno,
                 reinscripcionFecha = reinscripcion,
                 sinAdeudos = sinAdeudos,
-                operaciones = operaciones
+                operaciones = operaciones.distinct()
             )
-            
         } catch (e: Exception) {
-            Log.e("SNRepository", "Error general obteniendo perfil", e)
-            throw e // Re-lanzar para que el ViewModel lo maneje
+            Log.e("SNRepository", "Error perfil", e)
+            throw e
         }
     }
 

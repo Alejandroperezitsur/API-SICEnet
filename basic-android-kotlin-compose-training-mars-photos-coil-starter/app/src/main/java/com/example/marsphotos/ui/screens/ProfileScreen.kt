@@ -157,11 +157,13 @@ fun ProfileDetailScreen(
                 Divider()
 
                 ProfileInfoRow(label = "Carrera", value = profile.carrera)
+                ProfileInfoRow(label = "Estatus Académico", value = profile.estatusAcademico)
                 ProfileInfoRow(label = "Especialidad", value = profile.especialidad)
                 ProfileInfoRow(label = "Semestre", value = profile.semestre)
                 ProfileInfoRow(label = "Promedio", value = profile.promedio)
                 ProfileInfoRow(label = "Estado", value = profile.estado)
                 ProfileInfoRow(label = "Status Matrícula", value = profile.statusMatricula)
+                ProfileInfoRow(label = "Estatus Alumno", value = profile.estatusAlumno)
                 
                 Divider()
                 
@@ -173,7 +175,7 @@ fun ProfileDetailScreen(
                 if (profile.sinAdeudos.isNotEmpty()) {
                     Text(
                         text = profile.sinAdeudos,
-                        color = Color(0xFF006400), // Dark Green
+                        color = Color(0xFF006400),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -199,11 +201,18 @@ fun ProfileDetailScreen(
                     Divider()
                     
                     profile.operaciones.forEach { op ->
-                        Text(
-                            text = op,
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            fontSize = 14.sp
-                        )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = op,
+                                modifier = Modifier.padding(12.dp),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }

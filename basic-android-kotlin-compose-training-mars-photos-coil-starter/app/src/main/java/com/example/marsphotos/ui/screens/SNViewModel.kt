@@ -51,23 +51,19 @@ class SNViewModel(private val snRepository: SNRepository) : ViewModel() {
      * Call getMarsPhotos() on init so we can display status immediately.
      */
     init {
-        accesoSN()
+        // accesoSN() // Evitar login automático con datos hardcodeados
     }
 
     /**
      * Gets Mars photos information from the Mars API Retrofit service and updates the
      * [MarsPhoto] [List] [MutableList].
      */
-    fun accesoSN() {
+    fun accesoSN(matricula: String = "", pass: String = "") {
+        if (matricula.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            //snUiState = SNUiState.Loading
             snUiState = try {
-                val listResult = snRepository.acceso("S19120153", "Lt7=8Q${"$"}c")
-                SNUiState.Success(
-                    //"Success: ${listResult.size} Mars photos retrieved"
-                    //"First Mars image URL: ${listResult[0].imgSrc}"
-                    listResult.toString()
-                )
+                val listResult = snRepository.acceso(matricula, pass)
+                SNUiState.Success(listResult.toString())
             } catch (e: IOException) {
                 SNUiState.Error
             } catch (e: HttpException) {

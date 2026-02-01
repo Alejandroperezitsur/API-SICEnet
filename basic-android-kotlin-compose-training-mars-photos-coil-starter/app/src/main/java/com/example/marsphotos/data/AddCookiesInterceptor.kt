@@ -19,14 +19,14 @@ class AddCookiesInterceptor(// We're storing our stuff in a database made just f
         val builder: Request.Builder = chain.request().newBuilder()
         val preferences = PreferenceManager.getDefaultSharedPreferences(
             context
-        ).getStringSet(PREF_COOKIES, HashSet()) as HashSet<String>?
+        ).getStringSet(PREF_COOKIES, HashSet())
 
-        Log.d("AddCookiesInterceptor", "Cookies a enviar: ${preferences?.size ?: 0}")
-        
-        for (cookie in preferences!!) {
-            builder.addHeader("Cookie", cookie)
-            Log.d("AddCookiesInterceptor", "Adding Header: Cookie: $cookie")
+        if (preferences != null && preferences.isNotEmpty()) {
+            val cookieHeader = preferences.joinToString("; ")
+            builder.addHeader("Cookie", cookieHeader)
+            Log.d("AddCookiesInterceptor", "Adding Header: Cookie: $cookieHeader")
         }
+        
         return chain.proceed(builder.build())
     }
 
