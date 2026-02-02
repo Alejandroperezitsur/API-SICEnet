@@ -32,6 +32,32 @@ val bodyperfil =
   </soap:Body>
 </soap:Envelope>""".trimIndent()
 
+val bodyKardex =
+    """<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <getAllKardexConPromedioByAlumno xmlns="http://tempuri.org/">
+      <aluLineamiento>%d</aluLineamiento>
+    </getAllKardexConPromedioByAlumno>
+  </soap:Body>
+</soap:Envelope>""".trimIndent()
+
+val bodyCarga =
+    """<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <getCargaAcademicaByAlumno xmlns="http://tempuri.org/" />
+  </soap:Body>
+</soap:Envelope>""".trimIndent()
+
+val bodyParciales =
+    """<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <getCalifUnidadesByAlumno xmlns="http://tempuri.org/" />
+  </soap:Body>
+</soap:Envelope>""".trimIndent()
+
 interface SICENETWService {
 
     @Headers(
@@ -47,6 +73,27 @@ interface SICENETWService {
     )
     @POST("/ws/wsalumnos.asmx")
     suspend fun perfil(@Body soap: RequestBody): ResponseBody
+
+    @Headers(
+        "Content-Type: text/xml; charset=utf-8",
+        "SOAPAction: \"http://tempuri.org/getAllKardexConPromedioByAlumno\""
+    )
+    @POST("/ws/wsalumnos.asmx")
+    suspend fun kardexSoap(@Body soap: RequestBody): ResponseBody
+
+    @Headers(
+        "Content-Type: text/xml; charset=utf-8",
+        "SOAPAction: \"http://tempuri.org/getCargaAcademicaByAlumno\""
+    )
+    @POST("/ws/wsalumnos.asmx")
+    suspend fun cargaSoap(@Body soap: RequestBody): ResponseBody
+
+    @Headers(
+        "Content-Type: text/xml; charset=utf-8",
+        "SOAPAction: \"http://tempuri.org/getCalifUnidadesByAlumno\""
+    )
+    @POST("/ws/wsalumnos.asmx")
+    suspend fun parcialesSoap(@Body soap: RequestBody): ResponseBody
 
     // Página principal del alumno (HTML) - se usa para obtener foto y datos que no incluye el servicio SOAP
     @GET("/frmPlataformaAlumno.aspx")

@@ -29,7 +29,11 @@ import com.example.marsphotos.model.Usuario
 import com.example.marsphotos.network.SICENETWService
 import com.example.marsphotos.network.bodyacceso
 import com.example.marsphotos.network.bodyperfil
+import com.example.marsphotos.network.bodyKardex
+import com.example.marsphotos.network.bodyCarga
+import com.example.marsphotos.network.bodyParciales
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.MediaType.Companion.toMediaType
@@ -423,6 +427,97 @@ class NetworSNRepository(
                 }
             } catch (e: Exception) { 
                 pHtmlStr = "ERROR PASO 4: ${e.message}"
+            }
+
+            // --- OPTIONAL STEP 5: SOAP FALLBACK ---
+            if (kardexList.isEmpty() || cargaList.isEmpty() || parcialesList.isEmpty()) {
+                Log.e("SNRepository", ">>> STEP 5: Attempting SOAP FALLBACK (Experimental) <<<")
+                
+                // Kardex SOAP
+                try {
+                    val kSoap = bodyKardex.format(1)
+                    val kRes = snApiService.kardexSoap(kSoap.toRequestBody("text/xml; charset=utf-8".toMediaType())).string()
+                    Log.e("SNRepository", "SOAP Kardex response received")
+                    if (kRes.contains("{") && kardexList.isEmpty()) {
+                        // Intentar parsear si es JSON
+                        val kData = Regex("<getAllKardexConPromedioByAlumnoResult>(.*?)</getAllKardexConPromedioByAlumnoResult>").find(kRes)?.groupValues?.get(1)
+                        if (!kData.isNullOrBlank()) {
+                            val decoded = kData.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                            if (decoded.trim().startsWith("[")) {
+                                val kJson = Json.parseToJsonElement(decoded.trim()).jsonArray
+                                kJson.forEach { el ->
+                                    val obj = el.jsonObject
+                                    kardexList.add(com.example.marsphotos.model.MateriaKardex(
+                                        clave = obj["clave"]?.jsonPrimitive?.content ?: "",
+                                        nombre = obj["materia"]?.jsonPrimitive?.content ?: "",
+                                        calificacion = obj["calif"]?.jsonPrimitive?.content ?: "",
+                                        acreditacion = obj["acreditacion"]?.jsonPrimitive?.content ?: "",
+                                        periodo = obj["periodo"]?.jsonPrimitive?.content ?: ""
+                                    ))
+                                }
+                                Log.e("SNRepository", "✅ SOAP Kardex OK: ${kardexList.size}")
+                            }
+                        }
+                    }
+                } catch (e: Exception) { Log.e("SNRepository", "SOAP Kardex fail: ${e.message}") }
+
+                // Carga SOAP
+                try {
+                    val cSoap = bodyCarga
+                    val cRes = snApiService.cargaSoap(cSoap.toRequestBody("text/xml; charset=utf-8".toMediaType())).string()
+                    Log.e("SNRepository", "SOAP Carga response received")
+                    if (cRes.contains("{") && cargaList.isEmpty()) {
+                        val cData = Regex("<getCargaAcademicaByAlumnoResult>(.*?)</getCargaAcademicaByAlumnoResult>").find(cRes)?.groupValues?.get(1)
+                        if (!cData.isNullOrBlank()) {
+                            val decoded = cData.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                            if (decoded.trim().startsWith("[")) {
+                                val cJson = Json.parseToJsonElement(decoded.trim()).jsonArray
+                                cJson.forEach { el ->
+                                    val obj = el.jsonObject
+                                    cargaList.add(com.example.marsphotos.model.MateriaCarga(
+                                        nombre = obj["materia"]?.jsonPrimitive?.content ?: "",
+                                        docente = obj["docente"]?.jsonPrimitive?.content ?: "",
+                                        grupo = obj["grupo"]?.jsonPrimitive?.content ?: "",
+                                        creditos = obj["creditos"]?.jsonPrimitive?.content ?: ""
+                                    ))
+                                }
+                                Log.e("SNRepository", "✅ SOAP Carga OK: ${cargaList.size}")
+                            }
+                        }
+                    }
+                } catch (e: Exception) { Log.e("SNRepository", "SOAP Carga fail: ${e.message}") }
+
+                // Parciales SOAP
+                try {
+                    val pSoap = bodyParciales
+                    val pRes = snApiService.parcialesSoap(pSoap.toRequestBody("text/xml; charset=utf-8".toMediaType())).string()
+                    Log.e("SNRepository", "SOAP Parciales response received")
+                    if (pRes.contains("{") && parcialesList.isEmpty()) {
+                        val pData = Regex("<getCalifUnidadesByAlumnoResult>(.*?)</getCalifUnidadesByAlumnoResult>").find(pRes)?.groupValues?.get(1)
+                        if (!pData.isNullOrBlank()) {
+                            val decoded = pData.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                            if (decoded.trim().startsWith("[")) {
+                                val pJson = Json.parseToJsonElement(decoded.trim()).jsonArray
+                                pJson.forEach { el ->
+                                    val obj = el.jsonObject
+                                    val matName = obj["materia"]?.jsonPrimitive?.content ?: ""
+                                    val pars = mutableListOf<String>()
+                                    for (i in 1..8) {
+                                        val pVal = obj["p$i"]?.jsonPrimitive?.content ?: ""
+                                        if (pVal.isNotEmpty()) pars.add(pVal)
+                                    }
+                                    if (matName.isNotEmpty()) {
+                                        parcialesList.add(com.example.marsphotos.model.MateriaParcial(
+                                            materia = matName,
+                                            parciales = pars
+                                        ))
+                                    }
+                                }
+                                Log.e("SNRepository", "✅ SOAP Parciales OK: ${parcialesList.size}")
+                            }
+                        }
+                    }
+                } catch (e: Exception) { Log.e("SNRepository", "SOAP Parciales fail: ${e.message}") }
             }
 
         } catch (e: Exception) {
