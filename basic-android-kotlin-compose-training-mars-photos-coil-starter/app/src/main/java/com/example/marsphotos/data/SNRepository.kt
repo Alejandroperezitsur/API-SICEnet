@@ -103,7 +103,7 @@ class DBLocalSNRepository(val apiDB: Any) : SNRepository {
 /**
  * Implementación de red que conecta con el servicio SICENET SOAP
  */
-class NetworSNRepository(
+class NetworkSNRepository(
     private val snApiService: SICENETWService
 ) : SNRepository {
     
@@ -449,95 +449,9 @@ class NetworSNRepository(
             }
 
             // --- OPTIONAL STEP 5: SOAP FALLBACK ---
-            if (kardexList.isEmpty() || cargaList.isEmpty() || parcialesList.isEmpty()) {
-                Log.e("SNRepository", ">>> STEP 5: Attempting SOAP FALLBACK (Experimental) <<<")
-                
-                // Kardex SOAP
-                try {
-                    val kSoap = bodyKardex.format(1)
-                    val kRes = snApiService.kardexSoap(kSoap.toRequestBody("text/xml; charset=utf-8".toMediaType())).string()
-                    Log.e("SNRepository", "SOAP Kardex response received")
-                    if (kRes.contains("{") && kardexList.isEmpty()) {
-                        // Intentar parsear si es JSON
-                        val kData = Regex("<getAllKardexConPromedioByAlumnoResult>(.*?)</getAllKardexConPromedioByAlumnoResult>").find(kRes)?.groupValues?.get(1)
-                        if (!kData.isNullOrBlank()) {
-                            val decoded = kData.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
-                            if (decoded.trim().startsWith("[")) {
-                                val kJson = Json.parseToJsonElement(decoded.trim()).jsonArray
-                                kJson.forEach { el ->
-                                    val obj = el.jsonObject
-                                    kardexList.add(com.example.marsphotos.model.MateriaKardex(
-                                        clave = obj["clave"]?.jsonPrimitive?.content ?: "",
-                                        nombre = obj["materia"]?.jsonPrimitive?.content ?: "",
-                                        calificacion = obj["calif"]?.jsonPrimitive?.content ?: "",
-                                        acreditacion = obj["acreditacion"]?.jsonPrimitive?.content ?: "",
-                                        periodo = obj["periodo"]?.jsonPrimitive?.content ?: ""
-                                    ))
-                                }
-                                Log.e("SNRepository", "✅ SOAP Kardex OK: ${kardexList.size}")
-                            }
-                        }
-                    }
-                } catch (e: Exception) { Log.e("SNRepository", "SOAP Kardex fail: ${e.message}") }
+            // Removed redundant fallback logic to avoid code duplication.
+            // Use getKardex(), getCarga(), getCalifUnidades() explicitly if needed.
 
-                // Carga SOAP
-                try {
-                    val cSoap = bodyCarga
-                    val cRes = snApiService.cargaSoap(cSoap.toRequestBody("text/xml; charset=utf-8".toMediaType())).string()
-                    Log.e("SNRepository", "SOAP Carga response received")
-                    if (cRes.contains("{") && cargaList.isEmpty()) {
-                        val cData = Regex("<getCargaAcademicaByAlumnoResult>(.*?)</getCargaAcademicaByAlumnoResult>").find(cRes)?.groupValues?.get(1)
-                        if (!cData.isNullOrBlank()) {
-                            val decoded = cData.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
-                            if (decoded.trim().startsWith("[")) {
-                                val cJson = Json.parseToJsonElement(decoded.trim()).jsonArray
-                                cJson.forEach { el ->
-                                    val obj = el.jsonObject
-                                    cargaList.add(com.example.marsphotos.model.MateriaCarga(
-                                        nombre = obj["materia"]?.jsonPrimitive?.content ?: "",
-                                        docente = obj["docente"]?.jsonPrimitive?.content ?: "",
-                                        grupo = obj["grupo"]?.jsonPrimitive?.content ?: "",
-                                        creditos = obj["creditos"]?.jsonPrimitive?.content ?: ""
-                                    ))
-                                }
-                                Log.e("SNRepository", "✅ SOAP Carga OK: ${cargaList.size}")
-                            }
-                        }
-                    }
-                } catch (e: Exception) { Log.e("SNRepository", "SOAP Carga fail: ${e.message}") }
-
-                // Parciales SOAP
-                try {
-                    val pSoap = bodyParciales
-                    val pRes = snApiService.parcialesSoap(pSoap.toRequestBody("text/xml; charset=utf-8".toMediaType())).string()
-                    Log.e("SNRepository", "SOAP Parciales response received")
-                    if (pRes.contains("{") && parcialesList.isEmpty()) {
-                        val pData = Regex("<getCalifUnidadesByAlumnoResult>(.*?)</getCalifUnidadesByAlumnoResult>").find(pRes)?.groupValues?.get(1)
-                        if (!pData.isNullOrBlank()) {
-                            val decoded = pData.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
-                            if (decoded.trim().startsWith("[")) {
-                                val pJson = Json.parseToJsonElement(decoded.trim()).jsonArray
-                                pJson.forEach { el ->
-                                    val obj = el.jsonObject
-                                    val matName = obj["materia"]?.jsonPrimitive?.content ?: ""
-                                    val pars = mutableListOf<String>()
-                                    for (i in 1..8) {
-                                        val pVal = obj["p$i"]?.jsonPrimitive?.content ?: ""
-                                        if (pVal.isNotEmpty()) pars.add(pVal)
-                                    }
-                                    if (matName.isNotEmpty()) {
-                                        parcialesList.add(com.example.marsphotos.model.MateriaParcial(
-                                            materia = matName,
-                                            parciales = pars
-                                        ))
-                                    }
-                                }
-                                Log.e("SNRepository", "✅ SOAP Parciales OK: ${parcialesList.size}")
-                            }
-                        }
-                    }
-                } catch (e: Exception) { Log.e("SNRepository", "SOAP Parciales fail: ${e.message}") }
-            }
 
         } catch (e: Exception) {
             Log.e("SNRepository", "⚠️ Error Crítico en Scraping Secuencial: ${e.message}")
@@ -600,30 +514,43 @@ class NetworSNRepository(
         return userMatricula
     }
 
+    private fun unescapeXml(input: String): String {
+        return input.replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
+    }
+
     private fun extractResult(xml: String, tag: String): String? {
         val startTag = "<$tag>"
         val endTag = "</$tag>"
         val startIndex = xml.indexOf(startTag)
         val endIndex = xml.indexOf(endTag)
         if (startIndex != -1 && endIndex != -1) {
-            return xml.substring(startIndex + startTag.length, endIndex)
+            val content = xml.substring(startIndex + startTag.length, endIndex)
+            return unescapeXml(content)
         }
         return null
     }
 
     override suspend fun getKardex(matricula: String): List<MateriaKardex> {
         try {
+            Log.d("SNRepository", "Solicitando Kardex SOAP...")
             val soapBody = bodyKardex.format(1)
             val response = snApiService.kardexSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
             val xmlString = response.string()
             val result = extractResult(xmlString, "getAllKardexConPromedioByAlumnoResult")
             
             if (!result.isNullOrBlank()) {
+                Log.d("SNRepository", "Kardex JSON Raw: $result")
                  try {
                     return Json { ignoreUnknownKeys = true }.decodeFromString<List<MateriaKardex>>(result)
                 } catch (e: Exception) {
                     Log.e("SNRepository", "Error parsing Kardex JSON", e)
                 }
+            } else {
+                Log.e("SNRepository", "Kardex result is null or blank")
             }
         } catch (e: Exception) {
             Log.e("SNRepository", "Error fetching Kardex", e)
@@ -633,17 +560,21 @@ class NetworSNRepository(
 
     override suspend fun getCarga(matricula: String): List<MateriaCarga> {
         try {
+            Log.d("SNRepository", "Solicitando Carga SOAP...")
             val soapBody = bodyCarga
             val response = snApiService.cargaSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
             val xmlString = response.string()
             val result = extractResult(xmlString, "getCargaAcademicaByAlumnoResult")
             
             if (!result.isNullOrBlank()) {
+                Log.d("SNRepository", "Carga JSON Raw: $result")
                  try {
                     return Json { ignoreUnknownKeys = true }.decodeFromString<List<MateriaCarga>>(result)
                 } catch (e: Exception) {
                     Log.e("SNRepository", "Error parsing Carga JSON", e)
                 }
+            } else {
+                Log.e("SNRepository", "Carga result is null or blank")
             }
         } catch (e: Exception) {
             Log.e("SNRepository", "Error fetching Carga", e)
@@ -653,12 +584,14 @@ class NetworSNRepository(
 
     override suspend fun getCalifUnidades(matricula: String): List<MateriaParcial> {
         try {
+            Log.d("SNRepository", "Solicitando Parciales SOAP...")
             val soapBody = bodyParciales
             val response = snApiService.parcialesSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
             val xmlString = response.string()
             val result = extractResult(xmlString, "getCalifUnidadesByAlumnoResult")
             
             if (!result.isNullOrBlank()) {
+                Log.d("SNRepository", "Parciales JSON Raw: $result")
                  try {
                     val jsonArray = Json.parseToJsonElement(result).jsonArray
                     val list = mutableListOf<MateriaParcial>()
@@ -680,6 +613,8 @@ class NetworSNRepository(
                 } catch (e: Exception) {
                     Log.e("SNRepository", "Error parsing Parciales JSON", e)
                 }
+            } else {
+                Log.e("SNRepository", "Parciales result is null or blank")
             }
         } catch (e: Exception) {
             Log.e("SNRepository", "Error fetching Parciales", e)
@@ -689,17 +624,21 @@ class NetworSNRepository(
 
     override suspend fun getCalifFinal(matricula: String): List<MateriaFinal> {
         try {
+            Log.d("SNRepository", "Solicitando CalifFinal SOAP...")
             val soapBody = bodyCalifFinal
             val response = snApiService.finalSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
             val xmlString = response.string()
             val result = extractResult(xmlString, "getAllCalifFinalByAlumnosResult")
             
             if (!result.isNullOrBlank()) {
+                Log.d("SNRepository", "CalifFinal JSON Raw: $result")
                  try {
                     return Json { ignoreUnknownKeys = true }.decodeFromString<List<MateriaFinal>>(result)
                 } catch (e: Exception) {
                     Log.e("SNRepository", "Error parsing CalifFinal JSON", e)
                 }
+            } else {
+                Log.e("SNRepository", "CalifFinal result is null or blank")
             }
         } catch (e: Exception) {
             Log.e("SNRepository", "Error fetching CalifFinal", e)

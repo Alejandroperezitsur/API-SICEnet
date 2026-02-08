@@ -116,7 +116,7 @@ class DefaultAppContainer(applicationContext: Context) : AppContainer {
      * DI implementation for Mars photos repository
      */
     override val snRepository: SNRepository by lazy {
-        NetworSNRepository(retrofitServiceSN)
+        NetworkSNRepository(retrofitServiceSN)
     }
 
     override val localRepository: LocalRepository by lazy {
