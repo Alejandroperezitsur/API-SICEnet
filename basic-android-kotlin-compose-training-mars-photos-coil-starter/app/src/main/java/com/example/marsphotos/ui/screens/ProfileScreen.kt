@@ -56,6 +56,9 @@ import coil.compose.AsyncImage
 fun ProfileScreen(
     profileUiState: ProfileUiState,
     onBackClick: () -> Unit,
+    onKardexClick: () -> Unit,
+    onCargaClick: () -> Unit,
+    onGradesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -83,6 +86,9 @@ fun ProfileScreen(
             is ProfileUiState.Success -> {
                 ProfileDetailScreen(
                     profile = profileUiState.profile,
+                    onKardexClick = onKardexClick,
+                    onCargaClick = onCargaClick,
+                    onGradesClick = onGradesClick,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp)
@@ -103,10 +109,11 @@ fun ProfileScreen(
 @Composable
 fun ProfileDetailScreen(
     profile: ProfileStudent,
+    onKardexClick: () -> Unit,
+    onCargaClick: () -> Unit,
+    onGradesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedOp by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -184,14 +191,21 @@ fun ProfileDetailScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = "Operaciones Académicas (Clic para ver)", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Operaciones Académicas", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Divider()
                     profile.operaciones.forEach { op ->
+                        val onClick = when {
+                            op.contains("KARDEX") -> onKardexClick
+                            op.contains("CARGA") -> onCargaClick
+                            op.contains("CALIFICACIONES") -> onGradesClick
+                            else -> { {} }
+                        }
+                        
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F4F8)),
                             shape = RoundedCornerShape(8.dp),
-                            onClick = { selectedOp = op }
+                            onClick = onClick
                         ) {
                             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(text = op, modifier = Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -203,104 +217,8 @@ fun ProfileDetailScreen(
             }
         }
     }
-
-    // Dialogs para Detalles
-    selectedOp?.let { op ->
-        androidx.compose.ui.window.Dialog(onDismissRequest = { selectedOp = null }) {
-            Card(
-                modifier = Modifier.fillMaxWidth(0.95f).height(600.dp),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = op, style = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold))
-                        IconButton(onClick = { selectedOp = null }) {
-                            Icon(imageVector = Icons.Filled.Close, contentDescription = "Cerrar")
-                        }
-                    }
-                    val (debugInfo, htmlSnip) = when {
-                        op.contains("KARDEX") -> ("Título: ${profile.kardexTitle} | Items: ${profile.kardex.size}") to profile.kardexHtml
-                        op.contains("CARGA") -> ("Título: ${profile.cargaTitle} | Items: ${profile.cargaAcademica.size}") to profile.cargaHtml
-                        op.contains("CALIFICACIONES") -> ("Título: ${profile.califTitle} | Items: ${profile.calificacionesParciales.size}") to profile.califHtml
-                        else -> ("Título: N/A | Items: 0") to ""
-                    }
-                    Text(text = debugInfo, fontSize = 11.sp, color = Color.Gray)
-                    if (htmlSnip.isNotEmpty()) {
-                        Text(text = "Snippet (${htmlSnip.length} bytes):", fontSize = 10.sp, color = Color.Gray)
-                        Text(text = htmlSnip, 
-                             fontSize = 9.sp, 
-                             color = Color.LightGray, 
-                             lineHeight = 12.sp,
-                             maxLines = 15)
-                    }
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f)) {
-                        when {
-                            op.contains("KARDEX") -> KardexView(profile.kardex)
-                            op.contains("CARGA") -> CargaView(profile.cargaAcademica)
-                            op.contains("CALIFICACIONES") -> CalificacionesView(profile.calificacionesParciales)
-                            else -> Text("Contenido para $op no disponible aún o es solo informativo.")
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
-@Composable
-fun KardexView(kardex: List<com.example.marsphotos.model.MateriaKardex>) {
-    if (kardex.isEmpty()) { Text("No hay datos en el Kardex."); return }
-    kardex.forEach { mat ->
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(text = mat.nombre, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Calif: ${mat.calificacion}", fontSize = 12.sp)
-                Text(text = mat.acreditacion, fontSize = 12.sp, color = Color.Gray)
-            }
-            Text(text = "Periodo: ${mat.periodo}", fontSize = 11.sp, color = Color.LightGray)
-            Divider(modifier = Modifier.padding(top = 4.dp), thickness = 0.5.dp)
-        }
-    }
-}
-
-@Composable
-fun CargaView(carga: List<com.example.marsphotos.model.MateriaCarga>) {
-    if (carga.isEmpty()) { Text("No hay carga académica."); return }
-    carga.forEach { mat ->
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(text = mat.nombre, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text(text = mat.docente, fontSize = 12.sp, color = Color.Gray)
-            Text(text = "Horarios: L:${mat.lunes} M:${mat.martes} Mi:${mat.miercoles} J:${mat.jueves} V:${mat.viernes}", fontSize = 11.sp)
-            Divider(modifier = Modifier.padding(top = 4.dp), thickness = 0.5.dp)
-        }
-    }
-}
-
-@Composable
-fun CalificacionesView(parciales: List<com.example.marsphotos.model.MateriaParcial>) {
-    if (parciales.isEmpty()) { Text("No hay calificaciones parciales."); return }
-    parciales.forEach { mat ->
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(text = mat.materia, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                mat.parciales.forEachIndexed { index, score ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("U${index+1}", fontSize = 10.sp, color = Color.Gray)
-                        Text(score, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-            }
-            Divider(modifier = Modifier.padding(top = 4.dp), thickness = 0.5.dp)
-        }
-    }
-}
-
-/**
- * Fila para mostrar información del perfil
- */
 @Composable
 fun ProfileInfoRow(
     label: String,
@@ -407,7 +325,10 @@ fun ProfileDetailScreenPreview() {
                 promedio = "8.5",
                 estado = "Activo",
                 statusMatricula = "Vigente"
-            )
+            ),
+            onKardexClick = {},
+            onCargaClick = {},
+            onGradesClick = {}
         )
     }
 }

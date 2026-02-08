@@ -19,6 +19,9 @@ import AddCookiesInterceptor
 import ReceivedCookiesInterceptor
 import android.content.Context
 import android.util.Log
+import com.example.marsphotos.data.local.LocalRepository
+import com.example.marsphotos.data.local.LocalRepositoryImpl
+import com.example.marsphotos.data.local.AppDatabase
 import com.example.marsphotos.network.MarsApiService
 import com.example.marsphotos.network.SICENETWService
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -37,6 +40,7 @@ interface AppContainer {
 
     val marsPhotosRepository: MarsPhotosRepository
     val snRepository: SNRepository
+    val localRepository: LocalRepository
 }
 
 /**
@@ -111,7 +115,11 @@ class DefaultAppContainer(applicationContext: Context) : AppContainer {
     /**
      * DI implementation for Mars photos repository
      */
-    override val snRepository: NetworSNRepository by lazy {
+    override val snRepository: SNRepository by lazy {
         NetworSNRepository(retrofitServiceSN)
+    }
+
+    override val localRepository: LocalRepository by lazy {
+        LocalRepositoryImpl(AppDatabase.getDatabase(applicationContext).studentDao())
     }
 }

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.marsphotos.MarsPhotosApplication
+import com.example.marsphotos.data.local.LocalRepository
 import com.example.marsphotos.data.SNRepository
 import com.example.marsphotos.model.ProfileStudent
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +31,10 @@ sealed interface ProfileUiState {
 /**
  * ViewModel para mostrar el perfil académico del estudiante
  */
-class ProfileViewModel(private val snRepository: SNRepository) : ViewModel() {
+class ProfileViewModel(
+    private val snRepository: SNRepository,
+    private val localRepository: LocalRepository
+) : ViewModel() {
     
     var profileUiState: ProfileUiState by mutableStateOf(ProfileUiState.Loading)
         private set
@@ -42,24 +46,49 @@ class ProfileViewModel(private val snRepository: SNRepository) : ViewModel() {
         viewModelScope.launch {
             android.util.Log.d("ProfileVM", "Iniciando carga de perfil para $matricula")
             profileUiState = ProfileUiState.Loading
-            profileUiState = try {
-                val profile = withContext(Dispatchers.IO) {
+            
+            // 1. Try Network
+            var networkProfile: ProfileStudent? = null
+            try {
+                networkProfile = withContext(Dispatchers.IO) {
                     android.util.Log.d("ProfileVM", "Llamando a snRepository.profile...")
                     val result = snRepository.profile(matricula)
                     android.util.Log.d("ProfileVM", "snRepository.profile retornó: $result")
                     result
                 }
-                android.util.Log.d("ProfileVM", "Carga exitosa, actualizando estado a Success")
-                ProfileUiState.Success(profile)
-            } catch (e: IOException) {
-                android.util.Log.e("ProfileVM", "Error de IO", e)
-                ProfileUiState.Error("Error de conexión: ${e.message}")
-            } catch (e: HttpException) {
-                android.util.Log.e("ProfileVM", "Error HTTP", e)
-                ProfileUiState.Error("Error del servidor: ${e.message}")
-            } catch (e: Throwable) {
-                android.util.Log.e("ProfileVM", "Error inesperado (Throwable)", e)
-                ProfileUiState.Error("Error inesperado: ${e.message}")
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileVM", "Error de red al cargar perfil", e)
+            }
+
+            if (networkProfile != null && networkProfile.matricula.isNotEmpty()) {
+                profileUiState = ProfileUiState.Success(networkProfile)
+                return@launch
+            }
+
+            // 2. Try Local
+            try {
+                val localStudent = withContext(Dispatchers.IO) {
+                    localRepository.getStudentSync(matricula)
+                }
+
+                if (localStudent != null) {
+                    val profile = ProfileStudent(
+                        matricula = localStudent.matricula,
+                        nombre = localStudent.nombre,
+                        apellidos = localStudent.apellidos,
+                        carrera = localStudent.carrera,
+                        semestre = localStudent.semestre,
+                        promedio = localStudent.promedio,
+                        fotoUrl = localStudent.fotoUrl,
+                        operaciones = localStudent.operaciones
+                    )
+                    profileUiState = ProfileUiState.Success(profile)
+                } else {
+                    profileUiState = ProfileUiState.Error("No se pudo cargar el perfil (ni local ni red)")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileVM", "Error local al cargar perfil", e)
+                profileUiState = ProfileUiState.Error("Error: ${e.message}")
             }
         }
     }
@@ -72,7 +101,8 @@ class ProfileViewModel(private val snRepository: SNRepository) : ViewModel() {
             initializer {
                 val application = (this[APPLICATION_KEY] as MarsPhotosApplication)
                 val snRepository = application.container.snRepository
-                ProfileViewModel(snRepository = snRepository)
+                val localRepository = application.container.localRepository
+                ProfileViewModel(snRepository = snRepository, localRepository = localRepository)
             }
         }
     }

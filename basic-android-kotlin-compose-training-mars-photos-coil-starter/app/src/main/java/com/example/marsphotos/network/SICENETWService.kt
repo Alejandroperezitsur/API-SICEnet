@@ -58,6 +58,16 @@ val bodyParciales =
   </soap:Body>
 </soap:Envelope>""".trimIndent()
 
+val bodyCalifFinal =
+    """<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <getAllCalifFinalByAlumnos xmlns="http://tempuri.org/">
+      <bytModEducativo>1</bytModEducativo>
+    </getAllCalifFinalByAlumnos>
+  </soap:Body>
+</soap:Envelope>""".trimIndent()
+
 interface SICENETWService {
 
     @Headers(
@@ -94,6 +104,13 @@ interface SICENETWService {
     )
     @POST("/ws/wsalumnos.asmx")
     suspend fun parcialesSoap(@Body soap: RequestBody): ResponseBody
+
+    @Headers(
+        "Content-Type: text/xml; charset=utf-8",
+        "SOAPAction: \"http://tempuri.org/getAllCalifFinalByAlumnos\""
+    )
+    @POST("/ws/wsalumnos.asmx")
+    suspend fun finalSoap(@Body soap: RequestBody): ResponseBody
 
     // Página principal del alumno (HTML) - se usa para obtener foto y datos que no incluye el servicio SOAP
     @GET("/frmPlataformaAlumno.aspx")

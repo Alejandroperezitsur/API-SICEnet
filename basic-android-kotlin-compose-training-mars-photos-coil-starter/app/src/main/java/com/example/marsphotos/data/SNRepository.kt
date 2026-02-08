@@ -24,6 +24,7 @@ import com.example.marsphotos.model.PerfilDataSet
 import com.example.marsphotos.model.MateriaKardex
 import com.example.marsphotos.model.MateriaCarga
 import com.example.marsphotos.model.MateriaParcial
+import com.example.marsphotos.model.MateriaFinal
 import com.example.marsphotos.model.ProfileStudent
 import com.example.marsphotos.model.Usuario
 import com.example.marsphotos.network.SICENETWService
@@ -32,6 +33,7 @@ import com.example.marsphotos.network.bodyperfil
 import com.example.marsphotos.network.bodyKardex
 import com.example.marsphotos.network.bodyCarga
 import com.example.marsphotos.network.bodyParciales
+import com.example.marsphotos.network.bodyCalifFinal
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -56,6 +58,18 @@ interface SNRepository {
     /** Obtiene el perfil académico del estudiante */
     suspend fun profile(matricula: String): ProfileStudent
     
+    /** Obtiene el Kardex */
+    suspend fun getKardex(matricula: String): List<MateriaKardex>
+
+    /** Obtiene la Carga Académica */
+    suspend fun getCarga(matricula: String): List<MateriaCarga>
+
+    /** Obtiene Calificaciones Parciales */
+    suspend fun getCalifUnidades(matricula: String): List<MateriaParcial>
+
+    /** Obtiene Calificaciones Finales */
+    suspend fun getCalifFinal(matricula: String): List<MateriaFinal>
+
     /** Obtiene la matrícula del usuario autenticado */
     suspend fun getMatricula(): String
 }
@@ -75,6 +89,11 @@ class DBLocalSNRepository(val apiDB: Any) : SNRepository {
     override suspend fun profile(matricula: String): ProfileStudent {
         return ProfileStudent()
     }
+
+    override suspend fun getKardex(matricula: String): List<MateriaKardex> = emptyList()
+    override suspend fun getCarga(matricula: String): List<MateriaCarga> = emptyList()
+    override suspend fun getCalifUnidades(matricula: String): List<MateriaParcial> = emptyList()
+    override suspend fun getCalifFinal(matricula: String): List<MateriaFinal> = emptyList()
 
     override suspend fun getMatricula(): String {
         return ""
@@ -579,6 +598,113 @@ class NetworSNRepository(
      */
     override suspend fun getMatricula(): String {
         return userMatricula
+    }
+
+    private fun extractResult(xml: String, tag: String): String? {
+        val startTag = "<$tag>"
+        val endTag = "</$tag>"
+        val startIndex = xml.indexOf(startTag)
+        val endIndex = xml.indexOf(endTag)
+        if (startIndex != -1 && endIndex != -1) {
+            return xml.substring(startIndex + startTag.length, endIndex)
+        }
+        return null
+    }
+
+    override suspend fun getKardex(matricula: String): List<MateriaKardex> {
+        try {
+            val soapBody = bodyKardex.format(1)
+            val response = snApiService.kardexSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+            val xmlString = response.string()
+            val result = extractResult(xmlString, "getAllKardexConPromedioByAlumnoResult")
+            
+            if (!result.isNullOrBlank()) {
+                 try {
+                    return Json { ignoreUnknownKeys = true }.decodeFromString<List<MateriaKardex>>(result)
+                } catch (e: Exception) {
+                    Log.e("SNRepository", "Error parsing Kardex JSON", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SNRepository", "Error fetching Kardex", e)
+        }
+        return emptyList()
+    }
+
+    override suspend fun getCarga(matricula: String): List<MateriaCarga> {
+        try {
+            val soapBody = bodyCarga
+            val response = snApiService.cargaSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+            val xmlString = response.string()
+            val result = extractResult(xmlString, "getCargaAcademicaByAlumnoResult")
+            
+            if (!result.isNullOrBlank()) {
+                 try {
+                    return Json { ignoreUnknownKeys = true }.decodeFromString<List<MateriaCarga>>(result)
+                } catch (e: Exception) {
+                    Log.e("SNRepository", "Error parsing Carga JSON", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SNRepository", "Error fetching Carga", e)
+        }
+        return emptyList()
+    }
+
+    override suspend fun getCalifUnidades(matricula: String): List<MateriaParcial> {
+        try {
+            val soapBody = bodyParciales
+            val response = snApiService.parcialesSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+            val xmlString = response.string()
+            val result = extractResult(xmlString, "getCalifUnidadesByAlumnoResult")
+            
+            if (!result.isNullOrBlank()) {
+                 try {
+                    val jsonArray = Json.parseToJsonElement(result).jsonArray
+                    val list = mutableListOf<MateriaParcial>()
+                    jsonArray.forEach { element ->
+                        val obj = element.jsonObject
+                        val materia = obj["materia"]?.jsonPrimitive?.content ?: ""
+                        val parciales = mutableListOf<String>()
+                        for (i in 1..10) {
+                            val p = obj["p$i"]?.jsonPrimitive?.content
+                            if (!p.isNullOrEmpty()) {
+                                parciales.add(p)
+                            }
+                        }
+                        if (materia.isNotEmpty()) {
+                            list.add(MateriaParcial(materia, parciales))
+                        }
+                    }
+                    return list
+                } catch (e: Exception) {
+                    Log.e("SNRepository", "Error parsing Parciales JSON", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SNRepository", "Error fetching Parciales", e)
+        }
+        return emptyList()
+    }
+
+    override suspend fun getCalifFinal(matricula: String): List<MateriaFinal> {
+        try {
+            val soapBody = bodyCalifFinal
+            val response = snApiService.finalSoap(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+            val xmlString = response.string()
+            val result = extractResult(xmlString, "getAllCalifFinalByAlumnosResult")
+            
+            if (!result.isNullOrBlank()) {
+                 try {
+                    return Json { ignoreUnknownKeys = true }.decodeFromString<List<MateriaFinal>>(result)
+                } catch (e: Exception) {
+                    Log.e("SNRepository", "Error parsing CalifFinal JSON", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SNRepository", "Error fetching CalifFinal", e)
+        }
+        return emptyList()
     }
 }
 

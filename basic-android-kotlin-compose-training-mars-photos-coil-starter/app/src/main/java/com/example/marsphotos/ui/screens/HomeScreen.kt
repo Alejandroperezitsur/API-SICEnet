@@ -56,7 +56,7 @@ fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     when (marsUiState) {
-        is MarsUiState.Loading -> LoadingScreen(modifier = modifier.fillMaxSize())
+        is MarsUiState.Loading -> HomeLoadingScreen(modifier = modifier.fillMaxSize())
         /*is MarsUiState.Success -> ResultScreen(
             marsUiState.photos, modifier = modifier.fillMaxWidth()
         )*/
@@ -117,7 +117,7 @@ fun MarsPhotoCard(photo: MarsPhoto, modifier: Modifier = Modifier) {
  * The home screen displaying the loading message.
  */
 @Composable
-fun LoadingScreen(modifier: Modifier = Modifier) {
+fun HomeLoadingScreen(modifier: Modifier = Modifier) {
     Image(
         modifier = modifier.size(200.dp),
         painter = painterResource(R.drawable.loading_img),
@@ -162,7 +162,7 @@ fun ResultScreen(photos: String, modifier: Modifier = Modifier) {
 @Composable
 fun LoadingScreenPreview() {
     SICENETTheme {
-        LoadingScreen()
+        HomeLoadingScreen()
     }
 }
 
