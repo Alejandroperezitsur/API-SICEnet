@@ -9,7 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.example.sicedroid.db.AndroidDriverFactory
-import com.example.sicedroid.db.LocalDataSource
+import com.example.sicedroid.db.SqlDelightLocalDataSource
 import com.example.sicedroid.notifications.AndroidNotifier
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
 
         requestNotificationPermission()
 
-        val dataSource = LocalDataSource(AndroidDriverFactory(applicationContext))
+        val dataSource = SqlDelightLocalDataSource(AndroidDriverFactory(applicationContext))
         setContent {
             App(localDataSource = dataSource)
         }

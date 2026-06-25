@@ -22,17 +22,6 @@ kotlin {
         }
     }
     
-    @OptIn(org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl::class)
-    wasmJs {
-        moduleName = "composeApp"
-        browser {
-            commonWebpackConfig {
-                devServer?.port = 8080
-            }
-        }
-        binaries.executable()
-    }
-    
     js(IR) {
         browser {
             commonWebpackConfig {
@@ -59,8 +48,6 @@ kotlin {
                 implementation("io.ktor:ktor-client-logging:3.0.0")
                 implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
                 implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
-                implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc01")
-                implementation("io.coil-kt.coil3:coil-network-ktor3:3.0.0-rc01")
                 implementation("app.cash.sqldelight:coroutines-extensions:2.0.2")
             }
         }
@@ -99,14 +86,7 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.ui)
                 implementation("io.ktor:ktor-client-js:3.0.0")
-            }
-        }
-        val wasmJsMain by getting {
-            dependencies {
-                implementation(compose.runtime)
-                implementation(compose.foundation)
-                implementation(compose.material3)
-                implementation(compose.ui)
+                implementation("app.cash.sqldelight:web-worker-driver:2.0.2")
             }
         }
     }
