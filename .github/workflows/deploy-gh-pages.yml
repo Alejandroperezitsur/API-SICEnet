@@ -35,10 +35,33 @@ jobs:
       - name: Prepare deploy directory
         run: |
           mkdir -p deploy_output
-          cp composeApp/build/dist/js/productionWebpack/* deploy_output/ 2>/dev/null || true
-          cp composeApp/build/dist/js/productionExecutable/* deploy_output/ 2>/dev/null || true
-          cp composeApp/src/jsMain/resources/index.html deploy_output/ 2>/dev/null || true
+          find composeApp/build/dist -type f 2>/dev/null | head -50
+          echo "---"
+          find composeApp/build/distributions -type f 2>/dev/null | head -50
+          echo "---"
+          if [ -d "composeApp/build/dist/js/productionWebpack" ]; then
+            echo "Found productionWebpack"
+            cp -r composeApp/build/dist/js/productionWebpack/* deploy_output/
+          elif [ -d "composeApp/build/dist/js/productionExecutable" ]; then
+            echo "Found productionExecutable"
+            cp -r composeApp/build/dist/js/productionExecutable/* deploy_output/
+          else
+            echo "Trying to find webpack output..."
+            WEBPACK_DIR=$(find composeApp/build -type d -name "productionWebpack" 2>/dev/null | head -1)
+            if [ -n "$WEBPACK_DIR" ]; then
+              echo "Found at: $WEBPACK_DIR"
+              cp -r "$WEBPACK_DIR"/* deploy_output/
+            else
+              echo "ERROR: No webpack output found!"
+              find composeApp/build -type d 2>/dev/null | head -30
+              exit 1
+            fi
+          fi
+          if [ ! -f "deploy_output/index.html" ] && [ -f "composeApp/src/jsMain/resources/index.html" ]; then
+            cp composeApp/src/jsMain/resources/index.html deploy_output/
+          fi
           touch deploy_output/.nojekyll
+          echo "=== deploy_output contents ==="
           ls -la deploy_output/
 
       - name: Deploy to GitHub Pages
