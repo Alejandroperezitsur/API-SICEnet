@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          set-safe-directory: '*'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -27,11 +29,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Make Gradle executable
-        run: chmod +x ./gradlew
+      - name: Debug gradlew
+        run: |
+          file ./gradlew
+          head -1 ./gradlew
+          ls -la ./gradlew
 
       - name: Build JS production webpack
-        run: ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon
+        shell: bash
+        run: ./gradlew :composeApp:jsBrowserProductionWebpack
 
       - name: Copy .nojekyll to output
         run: touch composeApp/build/dist/js/productionWebpack/.nojekyll
