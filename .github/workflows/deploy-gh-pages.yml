@@ -24,8 +24,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
       - name: Build JS production webpack
-        run: ./gradlew :composeApp:jsBrowserProductionWebpack
+        run: ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon
 
       - name: Copy .nojekyll to output
         run: touch composeApp/build/dist/js/productionWebpack/.nojekyll
