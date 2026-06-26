@@ -14,8 +14,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          set-safe-directory: '*'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -26,23 +24,17 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Debug gradlew
-        run: |
-          file ./gradlew
-          head -1 ./gradlew
-          ls -la ./gradlew
-
       - name: Build JS production webpack
-        shell: bash
-        run: ./gradlew :composeApp:jsBrowserProductionWebpack
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon --stacktrace 2>&1
 
       - name: Copy .nojekyll to output
+        if: success()
         run: touch composeApp/build/dist/js/productionWebpack/.nojekyll
 
       - name: Deploy to GitHub Pages
+        if: success()
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
