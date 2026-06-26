@@ -30,17 +30,22 @@ jobs:
           chmod +x gradlew
 
       - name: Build JS production webpack
-        run: ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon --stacktrace
+        run: ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon
 
-      - name: List build output
-        if: always()
-        run: find composeApp/build/dist -type f 2>/dev/null || echo "dist dir not found"
+      - name: Prepare deploy directory
+        run: |
+          mkdir -p deploy_output
+          cp composeApp/build/dist/js/productionWebpack/* deploy_output/ 2>/dev/null || true
+          cp composeApp/build/dist/js/productionExecutable/* deploy_output/ 2>/dev/null || true
+          cp composeApp/src/jsMain/resources/index.html deploy_output/ 2>/dev/null || true
+          touch deploy_output/.nojekyll
+          ls -la deploy_output/
 
       - name: Deploy to GitHub Pages
         if: success()
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./composeApp/build/dist/js/productionWebpack
+          publish_dir: ./deploy_output
           publish_branch: gh-pages
           force_orphan: true
