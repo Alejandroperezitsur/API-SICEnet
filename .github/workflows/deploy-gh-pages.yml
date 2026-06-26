@@ -32,9 +32,9 @@ jobs:
       - name: Build JS production webpack
         run: ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon --stacktrace
 
-      - name: Copy .nojekyll to output
-        if: success()
-        run: touch composeApp/build/dist/js/productionWebpack/.nojekyll
+      - name: List build output
+        if: always()
+        run: find composeApp/build/dist -type f 2>/dev/null || echo "dist dir not found"
 
       - name: Deploy to GitHub Pages
         if: success()
@@ -43,3 +43,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./composeApp/build/dist/js/productionWebpack
           publish_branch: gh-pages
+          force_orphan: true
