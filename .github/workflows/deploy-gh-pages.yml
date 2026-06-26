@@ -24,10 +24,13 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build JS production webpack
+      - name: Fix line endings
         run: |
-          chmod +x ./gradlew
-          ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon --stacktrace 2>&1
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+
+      - name: Build JS production webpack
+        run: ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon --stacktrace
 
       - name: Copy .nojekyll to output
         if: success()
