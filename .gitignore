@@ -23,9 +23,7 @@ output.json
 # Kotlin/Java
 *.class
 *.jar
-
-# Ignore Gradle wrapper jar if you prefer not to commit it
-# gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
 
 # macOS
 .DS_Store
