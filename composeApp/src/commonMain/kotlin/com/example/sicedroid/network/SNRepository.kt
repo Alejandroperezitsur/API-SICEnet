@@ -86,7 +86,7 @@ class SNRepository(private val apiService: SiceApiService) {
 
     suspend fun acceso(matricula: String, contrasenia: String): Boolean {
         try {
-            val soapBody = bodyLogin.replaceFirst("%s", matricula).replaceFirst("%s", contrasenia)
+            val soapBody = bodyLogin.replaceFirst("%s", matricula.uppercase()).replaceFirst("%s", contrasenia)
             val xmlString = apiService.acceso(soapBody)
             val resultJson = extractResult(xmlString, "accesoLoginResult")
 

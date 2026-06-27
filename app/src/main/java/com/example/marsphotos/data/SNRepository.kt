@@ -99,7 +99,7 @@ class NetworkSNRepository(
         Log.d("SNRepository", "Matrícula: $matricula")
         
         try {
-            val soapBody = bodyLogin.format(matricula, contrasenia)
+            val soapBody = bodyLogin.format(matricula.uppercase(), contrasenia)
             Log.d("SNRepository", "Enviando SOAP Body (truncado): ${soapBody.take(100)}...")
             
             val response = snApiService.acceso(soapBody.toRequestBody("text/xml; charset=utf-8".toMediaType()))
