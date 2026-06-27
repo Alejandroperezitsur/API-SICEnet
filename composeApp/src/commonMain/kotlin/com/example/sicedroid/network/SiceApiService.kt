@@ -26,7 +26,6 @@ class SiceApiService {
     }
 
     private val baseUrls = listOf(
-        getBaseUrl(),
         "https://corsproxy.io/?https://sicenet.itsur.edu.mx",
         "https://api.allorigins.win/raw?url=https://sicenet.itsur.edu.mx"
     )
@@ -40,7 +39,16 @@ class SiceApiService {
                     header("SOAPAction", "\"$soapAction\"")
                     setBody(soapBody)
                 }
-                return response.bodyAsText()
+                if (response.status.value != 200) {
+                    lastException = Exception("HTTP ${response.status.value}: Error del servidor proxy")
+                    continue
+                }
+                val body = response.bodyAsText()
+                if (body.isBlank() || body.contains("<html", ignoreCase = true)) {
+                    lastException = Exception("Respuesta no válida del servidor")
+                    continue
+                }
+                return body
             } catch (e: Exception) {
                 lastException = e
             }

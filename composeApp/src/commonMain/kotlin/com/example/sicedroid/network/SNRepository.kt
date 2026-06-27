@@ -88,16 +88,14 @@ class SNRepository(private val apiService: SiceApiService) {
         val soapBody = bodyLogin.replaceFirst("%s", matricula.uppercase()).replaceFirst("%s", contrasenia)
         val xmlString = apiService.acceso(soapBody)
         val resultJson = extractResult(xmlString, "accesoLoginResult")
+            ?: throw NetworkException("Respuesta inesperada del servidor. Intenta de nuevo.")
 
-        if (resultJson != null) {
-            val jsonObject = json.parseToJsonElement(resultJson).jsonObject
-            val accesoValue = jsonObject["acceso"]?.jsonPrimitive?.content ?: ""
+        val jsonObject = json.parseToJsonElement(resultJson).jsonObject
+        val accesoValue = jsonObject["acceso"]?.jsonPrimitive?.content ?: ""
 
-            if (accesoValue.lowercase() == "true" || accesoValue == "1") {
-                userMatricula = matricula
-                return true
-            }
-            return false
+        if (accesoValue.lowercase() == "true" || accesoValue == "1") {
+            userMatricula = matricula
+            return true
         }
         return false
     }
