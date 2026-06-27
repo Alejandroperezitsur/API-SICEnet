@@ -165,3 +165,11 @@ compose.desktop {
         }
     }
 }
+
+// Desactivar optimizaciones de wasm-opt en Windows porque crashean el compilador
+tasks.configureEach {
+    if (name.contains("compileProductionExecutableKotlinWasmJsOptimize")) {
+        enabled = false
+    }
+}
+

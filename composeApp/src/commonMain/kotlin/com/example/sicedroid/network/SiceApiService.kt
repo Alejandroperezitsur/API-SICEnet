@@ -25,14 +25,23 @@ class SiceApiService {
         }
     }
 
-    private val baseUrls = listOf(
-        "https://corsproxy.io/?https://sicenet.itsur.edu.mx",
-        "https://api.allorigins.win/raw?url=https://sicenet.itsur.edu.mx"
-    )
-
     private suspend fun soapRequest(soapBody: String, soapAction: String): String {
+        val primaryUrl = getBaseUrl()
+        val urlsToTry = if (primaryUrl.contains("sicenet.itsur.edu.mx") && !primaryUrl.contains("?")) {
+            // Direct connection for Android/Desktop (no proxy needed)
+            listOf(primaryUrl)
+        } else {
+            // WASM/JS browser environments require a proxy.
+            // We try the primary (user's Cloudflare Worker) first, then fallback proxies.
+            listOf(
+                primaryUrl,
+                "https://proxy.corsfix.com/?https://sicenet.itsur.edu.mx",
+                "https://api.allorigins.win/raw?url=https://sicenet.itsur.edu.mx"
+            )
+        }
+
         var lastException: Exception? = null
-        for (url in baseUrls) {
+        for (url in urlsToTry) {
             try {
                 val response: HttpResponse = client.post("$url/ws/wsalumnos.asmx") {
                     header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
