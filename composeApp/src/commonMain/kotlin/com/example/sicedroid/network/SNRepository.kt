@@ -85,26 +85,21 @@ class SNRepository(private val apiService: SiceApiService) {
     }
 
     suspend fun acceso(matricula: String, contrasenia: String): Boolean {
-        try {
-            val soapBody = bodyLogin.replaceFirst("%s", matricula.uppercase()).replaceFirst("%s", contrasenia)
-            val xmlString = apiService.acceso(soapBody)
-            val resultJson = extractResult(xmlString, "accesoLoginResult")
+        val soapBody = bodyLogin.replaceFirst("%s", matricula.uppercase()).replaceFirst("%s", contrasenia)
+        val xmlString = apiService.acceso(soapBody)
+        val resultJson = extractResult(xmlString, "accesoLoginResult")
 
-            if (resultJson != null) {
-                val jsonObject = json.parseToJsonElement(resultJson).jsonObject
-                val accesoValue = jsonObject["acceso"]?.jsonPrimitive?.content ?: ""
+        if (resultJson != null) {
+            val jsonObject = json.parseToJsonElement(resultJson).jsonObject
+            val accesoValue = jsonObject["acceso"]?.jsonPrimitive?.content ?: ""
 
-                if (accesoValue.lowercase() == "true" || accesoValue == "1") {
-                    userMatricula = matricula
-                    return true
-                }
-                return false
+            if (accesoValue.lowercase() == "true" || accesoValue == "1") {
+                userMatricula = matricula
+                return true
             }
             return false
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
         }
+        return false
     }
 
     suspend fun profile(matricula: String): ProfileStudent {

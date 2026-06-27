@@ -10,6 +10,7 @@ import com.example.sicedroid.model.MateriaFinal
 import com.example.sicedroid.model.MateriaKardex
 import com.example.sicedroid.model.MateriaParcial
 import com.example.sicedroid.model.ProfileStudent
+import com.example.sicedroid.network.NetworkException
 import com.example.sicedroid.network.SNRepository
 import com.example.sicedroid.notifications.platformSendGradeNotification
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,18 +82,26 @@ class SicedroidViewModel(
             val session = localDataSource.getSession()
             if (session != null) {
                 _loginState.value = LoginUiState.Loading
-                val success = repository.acceso(session.matricula, session.password)
-                if (success) {
-                    _matricula.value = session.matricula
-                    _password.value = session.password
-                    localDataSource.saveSession(session.matricula, session.password)
-                    val profile = repository.profile(session.matricula)
-                    localDataSource.saveProfile(session.matricula, profile)
-                    _profileData.value = profile
-                    _lastUpdate.value = currentTimeMillis()
-                    _loginState.value = LoginUiState.Success
-                    navigateAndClearStack(Screen.PROFILE)
-                } else {
+                try {
+                    val success = repository.acceso(session.matricula, session.password)
+                    if (success) {
+                        _matricula.value = session.matricula
+                        _password.value = session.password
+                        localDataSource.saveSession(session.matricula, session.password)
+                        val profile = repository.profile(session.matricula)
+                        localDataSource.saveProfile(session.matricula, profile)
+                        _profileData.value = profile
+                        _lastUpdate.value = currentTimeMillis()
+                        _loginState.value = LoginUiState.Success
+                        navigateAndClearStack(Screen.PROFILE)
+                    } else {
+                        localDataSource.clearSession()
+                        _loginState.value = LoginUiState.Idle
+                    }
+                } catch (e: NetworkException) {
+                    localDataSource.clearSession()
+                    _loginState.value = LoginUiState.Error("No se pudo conectar al servidor. Verifica tu conexión a internet e intenta de nuevo.")
+                } catch (e: Exception) {
                     localDataSource.clearSession()
                     _loginState.value = LoginUiState.Idle
                 }
@@ -111,17 +120,23 @@ class SicedroidViewModel(
         if (m.isNotBlank() && p.isNotBlank()) {
             _loginState.value = LoginUiState.Loading
             viewModelScope.launch {
-                val success = repository.acceso(m, p)
-                if (success) {
-                    localDataSource.saveSession(m, p)
-                    val profile = repository.profile(m)
-                    localDataSource.saveProfile(m, profile)
-                    _profileData.value = profile
-                    _lastUpdate.value = currentTimeMillis()
-                    _loginState.value = LoginUiState.Success
-                    navigateAndClearStack(Screen.PROFILE)
-                } else {
-                    _loginState.value = LoginUiState.Error("Credenciales inválidas. Verifica tu matrícula y contraseña.")
+                try {
+                    val success = repository.acceso(m, p)
+                    if (success) {
+                        localDataSource.saveSession(m, p)
+                        val profile = repository.profile(m)
+                        localDataSource.saveProfile(m, profile)
+                        _profileData.value = profile
+                        _lastUpdate.value = currentTimeMillis()
+                        _loginState.value = LoginUiState.Success
+                        navigateAndClearStack(Screen.PROFILE)
+                    } else {
+                        _loginState.value = LoginUiState.Error("Credenciales inválidas. Verifica tu matrícula y contraseña.")
+                    }
+                } catch (e: NetworkException) {
+                    _loginState.value = LoginUiState.Error("No se pudo conectar al servidor. Verifica tu conexión a internet e intenta de nuevo.")
+                } catch (e: Exception) {
+                    _loginState.value = LoginUiState.Error("Error inesperado. Intenta de nuevo.")
                 }
             }
         }

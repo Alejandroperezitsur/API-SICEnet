@@ -8,6 +8,8 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 
+class NetworkException(message: String) : Exception(message)
+
 class SiceApiService {
     val client = HttpClient {
         install(HttpCookies)
@@ -23,15 +25,27 @@ class SiceApiService {
         }
     }
 
-    private val baseUrl = getBaseUrl()
+    private val baseUrls = listOf(
+        getBaseUrl(),
+        "https://corsproxy.io/?https://sicenet.itsur.edu.mx",
+        "https://api.allorigins.win/raw?url=https://sicenet.itsur.edu.mx"
+    )
 
     private suspend fun soapRequest(soapBody: String, soapAction: String): String {
-        val response: HttpResponse = client.post("$baseUrl/ws/wsalumnos.asmx") {
-            header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
-            header("SOAPAction", "\"$soapAction\"")
-            setBody(soapBody)
+        var lastException: Exception? = null
+        for (url in baseUrls) {
+            try {
+                val response: HttpResponse = client.post("$url/ws/wsalumnos.asmx") {
+                    header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
+                    header("SOAPAction", "\"$soapAction\"")
+                    setBody(soapBody)
+                }
+                return response.bodyAsText()
+            } catch (e: Exception) {
+                lastException = e
+            }
         }
-        return response.bodyAsText()
+        throw NetworkException("No se pudo conectar al servidor. Verifica tu conexión a internet.")
     }
 
     suspend fun acceso(soapBody: String): String =
