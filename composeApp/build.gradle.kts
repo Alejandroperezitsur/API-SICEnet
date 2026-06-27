@@ -49,7 +49,7 @@ kotlin {
                 implementation("io.ktor:ktor-client-logging:3.0.0")
                 implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
                 implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
-                implementation("app.cash.sqldelight:coroutines-extensions:2.0.2")
+                // SQLDelight coroutines-extensions has no wasmJs variant; added per-platform below
             }
         }
         val androidMain by getting {
@@ -64,6 +64,7 @@ kotlin {
                 implementation("com.google.code.gson:gson:2.10.1")
                 implementation("io.ktor:ktor-client-android:3.0.0")
                 implementation("app.cash.sqldelight:android-driver:2.0.2")
+                implementation("app.cash.sqldelight:coroutines-extensions:2.0.2")
             }
         }
         val desktopMain by getting {
@@ -78,6 +79,7 @@ kotlin {
                 implementation("io.ktor:ktor-client-cio:3.0.0")
                 implementation("org.slf4j:slf4j-simple:2.0.9")
                 implementation("app.cash.sqldelight:sqlite-driver:2.0.2")
+                implementation("app.cash.sqldelight:coroutines-extensions:2.0.2")
             }
         }
         val wasmJsMain by getting {
