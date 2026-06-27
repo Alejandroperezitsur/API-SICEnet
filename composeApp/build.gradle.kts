@@ -22,7 +22,8 @@ kotlin {
         }
     }
     
-    js(IR) {
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
         browser {
             commonWebpackConfig {
                 devServer?.port = 8080
@@ -79,14 +80,13 @@ kotlin {
                 implementation("app.cash.sqldelight:sqlite-driver:2.0.2")
             }
         }
-        val jsMain by getting {
+        val wasmJsMain by getting {
             dependencies {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
                 implementation(compose.ui)
                 implementation("io.ktor:ktor-client-js:3.0.0")
-                implementation("app.cash.sqldelight:web-worker-driver:2.0.2")
             }
         }
     }

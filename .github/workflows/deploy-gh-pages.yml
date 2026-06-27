@@ -29,43 +29,29 @@ jobs:
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
 
-      - name: Build JS production webpack
-        run: ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon
+      - name: Build wasmJs production distribution
+        run: ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon
 
-      - name: Find webpack output
+      - name: Find wasmJs output
         run: |
-          echo "=== Searching for JS output files ==="
-          find composeApp/build -name "*.js" -path "*/dist/*" -type f 2>/dev/null | head -20
-          echo "=== Searching for index.html ==="
-          find composeApp/build -name "index.html" -type f 2>/dev/null | head -10
-          echo "=== dist directory structure ==="
+          echo "=== wasmJs productionExecutable directory ==="
+          find composeApp/build/dist/wasmJs/productionExecutable -type f 2>/dev/null | head -30
+          echo "=== All dist directories ==="
           find composeApp/build/dist -type d 2>/dev/null | head -20
-          echo "=== ALL directories under build ==="
-          find composeApp/build -type d -maxdepth 4 2>/dev/null | head -40
-          echo "=== distributions directory ==="
-          find composeApp/build/distributions -type f 2>/dev/null | head -20
 
       - name: Prepare deploy
         run: |
           mkdir -p deploy_output
-          # Try all possible output locations
-          for dir in composeApp/build/dist/js/productionWebpack composeApp/build/dist/js/productionExecutable composeApp/build/distributions; do
-            if [ -d "$dir" ] && [ "$(ls -A $dir 2>/dev/null)" ]; then
-              echo "Copying from $dir"
-              cp -r "$dir"/* deploy_output/
-            fi
-          done
-          # If nothing found, try broader search
-          if [ -z "$(ls -A deploy_output 2>/dev/null)" ]; then
-            echo "No output found in standard paths, searching..."
-            find composeApp/build -name "composeApp.js" -type f 2>/dev/null | while read f; do
-              cp "$(dirname "$f")"/* deploy_output/ 2>/dev/null
-            done
+          WASM_DIR="composeApp/build/dist/wasmJs/productionExecutable"
+          if [ -d "$WASM_DIR" ] && [ "$(ls -A $WASM_DIR 2>/dev/null)" ]; then
+            echo "Copying from $WASM_DIR"
+            cp -r "$WASM_DIR"/* deploy_output/
+          else
+            echo "ERROR: wasmJs output not found at $WASM_DIR"
+            find composeApp/build -type f -name "*.wasm" 2>/dev/null | head -10
+            exit 1
           fi
-          # Ensure index.html exists
-          if [ ! -f "deploy_output/index.html" ]; then
-            cp composeApp/src/jsMain/resources/index.html deploy_output/
-          fi
+          # Ensure .nojekyll exists so GitHub Pages serves .wasm files correctly
           touch deploy_output/.nojekyll
           echo "=== deploy_output ==="
           ls -la deploy_output/
