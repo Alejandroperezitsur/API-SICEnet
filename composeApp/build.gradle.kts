@@ -94,6 +94,13 @@ kotlin {
     }
 }
 
+// SQLDelight 2.0.2 has no wasmJs variant. The plugin auto-adds sqldelight:runtime
+// to commonMain for every target, so we must explicitly exclude it from all wasmJs
+// configurations. The wasmJsMain target uses a no-op WebLocalDataSource stub instead.
+configurations.matching { it.name.contains("wasmJs", ignoreCase = true) }.configureEach {
+    exclude(group = "app.cash.sqldelight")
+}
+
 android {
     namespace = "com.example.marsphotos"
     compileSdk = 34
