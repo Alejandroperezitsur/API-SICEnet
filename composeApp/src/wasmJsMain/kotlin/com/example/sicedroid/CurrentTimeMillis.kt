@@ -1,8 +1,5 @@
 package com.example.sicedroid
 
-import kotlin.js.JsFun
-
-@JsFun("() => Date.now()")
-external fun jsDateNow(): Double
+private fun jsDateNow(): Double = js("Date.now()")
 
 actual fun currentTimeMillis(): Long = jsDateNow().toLong()

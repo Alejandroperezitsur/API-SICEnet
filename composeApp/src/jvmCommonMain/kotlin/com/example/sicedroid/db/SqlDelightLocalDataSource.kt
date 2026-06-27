@@ -15,7 +15,13 @@ class SqlDelightLocalDataSource(driverFactory: DriverFactory) : LocalDataSource 
     // ── Session ────────────────────────────────────────────────────────
 
     override fun getSession(): SessionEntity? {
-        return database.sessionQueries.getSession().executeAsOneOrNull()
+        val entity = database.sessionQueries.getSession().executeAsOneOrNull() ?: return null
+        return SessionEntity(
+            matricula = entity.matricula,
+            password = entity.password,
+            is_logged_in = entity.is_logged_in,
+            last_login = entity.last_login
+        )
     }
 
     override fun sessionExists(): Boolean {
