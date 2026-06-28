@@ -166,9 +166,10 @@ compose.desktop {
     }
 }
 
-// Desactivar optimizaciones de wasm-opt en Windows porque crashean el compilador
+// Desactivar optimizaciones de wasm-opt solo en Windows porque crashean el compilador
 tasks.configureEach {
-    if (name.contains("compileProductionExecutableKotlinWasmJsOptimize")) {
+    if (name.contains("compileProductionExecutableKotlinWasmJsOptimize")
+        && org.gradle.internal.os.OperatingSystem.current().isWindows) {
         enabled = false
     }
 }

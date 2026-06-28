@@ -40,18 +40,27 @@ jobs:
           echo "=== All dist directories ==="
           find composeApp/build/dist -type d 2>/dev/null | head -20
 
+      - name: Validate build output
+        run: |
+          WASM_DIR="composeApp/build/dist/wasmJs/productionExecutable"
+          if [ ! -d "$WASM_DIR" ]; then
+            echo "ERROR: Output directory not found at $WASM_DIR"
+            exit 1
+          fi
+          if [ ! -f "$WASM_DIR/composeApp.js" ]; then
+            echo "ERROR: composeApp.js not found in $WASM_DIR"
+            echo "Files present:"
+            ls -la "$WASM_DIR/"
+            exit 1
+          fi
+          echo "Build output validated successfully"
+          ls -la "$WASM_DIR/"
+
       - name: Prepare deploy
         run: |
           mkdir -p deploy_output
           WASM_DIR="composeApp/build/dist/wasmJs/productionExecutable"
-          if [ -d "$WASM_DIR" ] && [ "$(ls -A $WASM_DIR 2>/dev/null)" ]; then
-            echo "Copying from $WASM_DIR"
-            cp -r "$WASM_DIR"/* deploy_output/
-          else
-            echo "ERROR: wasmJs output not found at $WASM_DIR"
-            find composeApp/build -type f -name "*.wasm" 2>/dev/null | head -10
-            exit 1
-          fi
+          cp -r "$WASM_DIR"/* deploy_output/
           # Ensure .nojekyll exists so GitHub Pages serves .wasm files correctly
           touch deploy_output/.nojekyll
           echo "=== deploy_output ==="
